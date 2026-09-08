@@ -1,0 +1,75 @@
+---
+import "../styles/global.css";
+import { disclaimer } from "@uaeprop/site-kit";
+import config from "../../site.config";
+
+interface Props {
+  title: string;
+  description: string;
+  /** Path without the origin, for the canonical. */
+  path: string;
+  noindex?: boolean;
+}
+
+const { title, description, path, noindex = false } = Astro.props;
+const canonical = new URL(path, Astro.site).href;
+const ogImage = new URL(config.og.image, Astro.site).href;
+/* Under 60 characters as rendered, brand suffix included. */
+const fullTitle = title === config.brand ? title : `${title} · ${config.brand}`;
+---
+
+<!doctype html>
+<html lang="en-AE">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImage} />
+
+    <meta name="theme-color" content="#FBFBFC" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0B0D10" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: config.brand,
+      url: `https://${config.domain}`,
+      description: "Independent property research for the UAE. Not a licensed broker.",
+    })} />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="shell" style="padding-block: var(--space-m);">
+      <nav aria-label="Main" style="display:flex; align-items:baseline; gap:var(--space-m); flex-wrap:wrap;">
+        <a href="/" style="text-decoration:none; font-weight:600; letter-spacing:-0.03em; font-size:var(--step-1);">
+          {config.brand}
+        </a>
+        <span class="meta" style="flex:1 1 auto; min-width:0;">{config.tagline}</span>
+        <a href="/costs" class="meta">Every fee</a>
+        <a href="/method" class="meta">Method</a>
+      </nav>
+    </header>
+
+    <main id="main"><slot /></main>
+
+    <footer class="shell" style="margin-top: var(--space-2xl); padding-block: var(--space-l); border-top: 1px solid var(--rule);">
+      <p class="meta" style="max-width: 52ch;">{disclaimer(config.brand)}</p>
+      <p class="meta" style="margin-top: var(--space-s);">
+        <a href="/privacy">Privacy</a> &middot; <a href="/terms">Terms</a> &middot; <a href="/method">Method and sources</a>
+      </p>
+    </footer>
+  </body>
+</html>

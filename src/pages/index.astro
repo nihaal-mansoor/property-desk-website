@@ -1,0 +1,190 @@
+---
+import Base from "../layouts/Base.astro";
+import config from "../../site.config";
+import { computeCosts, DEFAULTS, CHECKED, AED, NUM } from "../lib/costs";
+
+/*
+ * The page is rendered at build time with a worked example at the default
+ * price, so it is complete and readable with no JavaScript at all: every line,
+ * every basis, every source. The enhancement script only recalculates the same
+ * markup in place. (§4.2)
+ */
+const example = computeCosts(DEFAULTS);
+const share = example.fees / DEFAULTS.price;
+---
+
+<Base
+  title={config.brand}
+  description={config.description}
+  path="/"
+>
+  <div class="col" style="padding-block: var(--space-l) var(--space-xl);">
+    <h1>What does buying in Dubai actually cost?</h1>
+    <p class="meta" style="margin-top: var(--space-s); font-size: var(--step-0);">
+      Not the price. The cash you need on transfer day, every fee itemised, with
+      where each figure comes from. Checked {CHECKED}.
+    </p>
+
+    <!-- Stepped intake, one decision at a time. -->
+    <!-- Not a <form>: there is no server and nothing is ever submitted, so a
+         form element would be promising a submit that does not exist, and WCAG
+         H32 would rightly ask where its submit button is. A labelled group is
+         what this actually is. -->
+    <div id="calc" role="group" aria-labelledby="calc-h" style="margin-top: var(--space-l);">
+      <h2 id="calc-h" class="sr-only">Your purchase</h2>
+      <fieldset style="border:0; padding:0; margin:0 0 var(--space-m);">
+        <legend class="meta" style="padding:0 0 var(--space-2xs);">1. What is the agreed price?</legend>
+        <label class="sr-only" for="price">Agreed price in dirhams</label>
+        <input
+          class="field" id="price" name="price" type="number"
+          min="100000" max="500000000" step="10000" value={DEFAULTS.price}
+          inputmode="numeric"
+        />
+      </fieldset>
+
+      <fieldset style="border:0; padding:0; margin:0 0 var(--space-m);">
+        <legend class="meta" style="padding:0 0 var(--space-2xs);">2. How are you paying?</legend>
+        <div style="display:flex; gap:var(--space-s); flex-wrap:wrap;">
+          <label style="display:flex; align-items:center; gap:0.4rem;">
+            <input type="radio" name="funding" value="mortgage" checked /> Mortgage
+          </label>
+          <label style="display:flex; align-items:center; gap:0.4rem;">
+            <input type="radio" name="funding" value="cash" /> Cash
+          </label>
+        </div>
+        <div id="ltv-wrap" style="margin-top: var(--space-s);">
+          <label class="meta" for="ltv">Loan as a share of price: <span class="num" id="ltv-out">80%</span></label>
+          <input id="ltv" name="ltv" type="range" min="40" max="85" step="5" value="80" style="width:100%;" />
+        </div>
+      </fieldset>
+
+      <fieldset style="border:0; padding:0; margin:0 0 var(--space-m);">
+        <legend class="meta" style="padding:0 0 var(--space-2xs);">3. What are you buying?</legend>
+        <div style="display:flex; gap:var(--space-s); flex-wrap:wrap;">
+          <label style="display:flex; align-items:center; gap:0.4rem;">
+            <input type="radio" name="purchase" value="resale" checked /> Resale
+          </label>
+          <label style="display:flex; align-items:center; gap:0.4rem;">
+            <input type="radio" name="purchase" value="offplan" /> Off-plan
+          </label>
+        </div>
+      </fieldset>
+
+      <details style="margin-bottom: var(--space-m);">
+        <summary class="meta" style="cursor:pointer;">Adjust the negotiable parts</summary>
+        <div style="margin-top: var(--space-s); display:grid; gap:var(--space-s);">
+          <div>
+            <label class="meta" for="commission">
+              Agency commission: <span class="num" id="commission-out">2.0%</span>
+            </label>
+            <input id="commission" name="commission" type="range" min="0" max="3" step="0.25" value="2" style="width:100%;" />
+          </div>
+          <label style="display:flex; align-items:center; gap:0.5rem;" class="meta">
+            <input type="checkbox" id="noc" name="noc" /> I am paying the developer&rsquo;s no objection certificate
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem;" class="meta">
+            <input type="checkbox" id="conveyancing" name="conveyancing" /> Using a conveyancer
+          </label>
+        </div>
+      </details>
+
+      <noscript>
+        <p class="meta" style="border-left:2px solid var(--signal); padding-left:var(--space-s);">
+          The figures below are a worked example at {AED.format(DEFAULTS.price)},
+          with every line and its source. Changing the inputs needs JavaScript;
+          the arithmetic itself is on <a href="/method">the method page</a> if you
+          would rather do it yourself.
+        </p>
+      </noscript>
+    </div>
+
+    <!-- Result. Rendered server-side with the worked example. -->
+    <section aria-labelledby="result-h" style="margin-top: var(--space-l);">
+      <h2 id="result-h" style="font-size: var(--step-1);">
+        On <span class="num" id="echo-price">{AED.format(DEFAULTS.price)}</span>
+      </h2>
+
+      <div class="rows" id="lines" style="margin-top: var(--space-s);">
+        {example.lines.map((l) => (
+          <div class="row" data-line={l.id}>
+            <span class="row-label">
+              {l.label}
+              <span class="row-note">{l.basis}{l.estimate ? " · estimate" : ""}</span>
+            </span>
+            <span class="row-value" data-amount>{AED.format(l.amount)}</span>
+          </div>
+        ))}
+      </div>
+
+      <div class="row row-total">
+        <span class="row-label">
+          Fees and charges
+          <span class="row-note">
+            <span class="num" id="share-out">{(share * 100).toFixed(1)}%</span> of the price
+          </span>
+        </span>
+        <span class="row-value" id="fees-out">{AED.format(example.fees)}</span>
+      </div>
+
+      <div class="rows" style="margin-top: var(--space-l); border-top:0;">
+        <div class="row">
+          <span class="row-label">Deposit
+            <span class="row-note">Price less the loan</span>
+          </span>
+          <span class="row-value" id="deposit-out">{AED.format(example.deposit)}</span>
+        </div>
+        <div class="row" id="shortfall-row" hidden>
+          <span class="row-label" style="color: var(--caution);">
+            Of which, short valuation
+            <span class="row-note">Already inside the deposit above. The loan follows the lower figure, so the deposit rises to cover it.</span>
+          </span>
+          <span class="row-value" id="shortfall-out" style="color: var(--caution);">{AED.format(0)}</span>
+        </div>
+        <div class="row row-total">
+          <span class="row-label">
+            Cash needed on the day
+            <span class="row-note">Deposit plus fees</span>
+          </span>
+          <span class="row-value" id="cash-out" style="color: var(--signal);">
+            {AED.format(example.cashToClose)}
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- The valuation gap. The point of the site. -->
+    <section aria-labelledby="val-h" style="margin-top: var(--space-xl); padding-top: var(--space-m); border-top: 1px solid var(--rule);">
+      <h2 id="val-h">What if the bank values it lower?</h2>
+      <p style="margin-top: var(--space-s);">
+        A lender advances against the lower of its own valuation and the price you
+        agreed. If the valuation comes in under, the loan shrinks, but the seller
+        is still owed the price you agreed, so the difference lands on your
+        deposit. On an eighty percent loan, every dirham the valuation falls short
+        costs you eighty fils in extra cash, usually at short notice.
+      </p>
+      <div style="margin-top: var(--space-s);">
+        <label class="meta" for="valuation">
+          Bank values it at <span class="num" id="valuation-out">100%</span> of the agreed price
+        </label>
+        <input id="valuation" name="valuation" type="range" min="88" max="105" step="1" value="100" style="width:100%;" />
+      </div>
+      <p class="meta" id="valuation-note" style="margin-top: var(--space-s);">
+        At the agreed price there is no gap. Drag the slider to see what a short
+        valuation costs you.
+      </p>
+      <p class="meta" style="margin-top: var(--space-s);">
+        Most contracts carry a variance clause covering some of this. Read what
+        yours actually says before you sign it.
+      </p>
+    </section>
+
+    <p class="meta" style="margin-top: var(--space-xl);">
+      Every figure and its source is listed on <a href="/costs">the fee reference</a>,
+      and how this is worked out is on <a href="/method">the method page</a>.
+      Fees change. These were checked in {CHECKED}.
+    </p>
+  </div>
+
+  <!-- Served as a file, never inline: the CSP carries no unsafe-inline. (§4.1) -->
+  <script src="/calc.js" defer></script>
+</Base>

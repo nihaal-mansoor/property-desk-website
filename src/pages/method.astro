@@ -1,0 +1,60 @@
+---
+import Base from "../layouts/Base.astro";
+import { CHECKED, VAT } from "../lib/costs";
+---
+
+<Base
+  title="Method and sources"
+  description="How Property Desk calculates transaction costs, what it assumes, and what it deliberately does not tell you."
+  path="/method"
+>
+  <div class="col" style="padding-block: var(--space-l) var(--space-xl);">
+    <h1>Method and sources</h1>
+
+    <h2 style="margin-top: var(--space-l);">Where the figures come from</h2>
+    <p style="margin-top: var(--space-s);">
+      Statutory charges, the transfer fee, mortgage registration and title deed
+      issuance, are the Dubai Land Department&rsquo;s published rates. The
+      registration trustee fee is the standard tariff, which has a lower band
+      below AED 500,000. VAT is applied at {(VAT * 100).toFixed(0)}% to the
+      services that carry it, and not to the statutory fees, which do not.
+    </p>
+    <p>
+      Agency commission, the bank arrangement fee, the valuation and the
+      developer&rsquo;s no objection certificate are market practice rather than
+      published rates. Those are shown as a midpoint of the usual range and
+      marked as estimates, because presenting a negotiated fee as a fixed one
+      would be the same mistake this site exists to correct.
+    </p>
+    <p>All figures were last checked in {CHECKED}.</p>
+
+    <h2 style="margin-top: var(--space-l);">The valuation rule</h2>
+    <p style="margin-top: var(--space-s);">
+      A lender advances against the lower of its own valuation and the price
+      agreed. The calculator applies that rule rather than assuming the two
+      match, because the gap between them is the single most common reason a
+      buyer arrives at transfer short of cash.
+    </p>
+
+    <h2 style="margin-top: var(--space-l);">What this does not do</h2>
+    <p style="margin-top: var(--space-s);">
+      It does not tell you what a property is worth, what to buy, or whether to
+      buy at all. It has no view on any building, community or developer, and it
+      does not carry listings. It answers one question: given a price you have
+      already agreed, what will the transaction cost you.
+    </p>
+    <p>
+      It also does not model ongoing costs. Service charges, cooling, insurance
+      and mortgage payments all continue after transfer and none of them appear
+      here.
+    </p>
+
+    <h2 style="margin-top: var(--space-l);">Corrections</h2>
+    <p style="margin-top: var(--space-s);">
+      Fees change, and a fee table with no date is a fee table that is quietly
+      wrong. If a figure here no longer matches what you were charged, that is
+      worth telling us, and the date above is how you check whether it has been
+      reviewed since.
+    </p>
+  </div>
+</Base>

@@ -1,0 +1,56 @@
+---
+import Base from "../layouts/Base.astro";
+import config from "../../site.config";
+import { disclaimer } from "@uaeprop/site-kit";
+---
+<Base title="Terms" description="What Property Desk is, what its numbers are and are not, and the limits of relying on them." path="/terms">
+  <div class="col" style="padding-block: var(--space-l) var(--space-xl);">
+    <h1>Terms</h1>
+
+    <h2 style="margin-top: var(--space-l);">We are not a broker</h2>
+    <p style="margin-top: var(--space-s);">{disclaimer(config.brand)}</p>
+    <p>
+      Nothing here is an offer to sell property, an invitation to buy one, or an
+      advertisement for any specific unit. We hold no Dubai Land Department
+      advertising permit because there is nothing here to advertise.
+    </p>
+
+    <h2 style="margin-top: var(--space-l);">Arithmetic, not advice</h2>
+    <p style="margin-top: var(--space-s);">
+      The calculator applies published rates and customary market fees to a
+      number you supply. It is not legal, financial or tax advice, it does not
+      know your circumstances, and it cannot see the contract in front of you.
+      Before committing, take advice from someone qualified who can.
+    </p>
+
+    <h2 style="margin-top: var(--space-l);">Figures go out of date</h2>
+    <p style="margin-top: var(--space-s);">
+      Fees, tariffs and lending practice all change, sometimes without notice.
+      Every figure here carries the date it was last checked. Treat the output as
+      indicative, and confirm it with the Land Department, your lender or your
+      conveyancer before you rely on it. We do not warrant that any figure is
+      current.
+    </p>
+    <p>
+      Several of the amounts are negotiated rather than fixed, and are shown as a
+      midpoint of the usual range. Your quote will differ, which is rather the
+      point of knowing the range.
+    </p>
+
+    <h2 style="margin-top: var(--space-l);">Third-party names</h2>
+    <p style="margin-top: var(--space-s);">
+      Authorities, banks and developers are referred to descriptively, to explain
+      how a transaction works. Those names belong to their owners, and reference
+      does not imply affiliation or endorsement in either direction.
+    </p>
+
+    <h2 style="margin-top: var(--space-l);">Liability</h2>
+    <p style="margin-top: var(--space-s);">
+      This site is provided as it is. To the extent the law allows, we are not
+      liable for loss arising from decisions taken on the basis of it. That is
+      not an attempt to disclaim carelessness on our part: it is an
+      acknowledgement that a calculator cannot know your transaction, and that
+      the person who can is the one you should be paying.
+    </p>
+  </div>
+</Base>
