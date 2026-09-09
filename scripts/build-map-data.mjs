@@ -303,8 +303,20 @@ for (const [num, poly] of polys) {
 
 /* Geometry carries one flattened set of numbers per period, because the map
    colours from feature properties and cannot reach into a nested object. */
+/* Attribution travels with the file. The UAE Federal Open Data Licence permits
+   redistribution and commercial use and requires the source to be credited, and
+   these two files are served standalone: the geojson is even advertised as a
+   DataDownload in the page's Dataset schema. Someone who fetches it directly
+   never sees the site's footer. */
+const ATTRIBUTION = {
+  source: "Dubai Land Department transaction register and community boundaries, via Dubai Pulse open data",
+  licence: "UAE Federal Open Data Licence",
+  derived: "Aggregated medians and counts computed by Property Desk (propertydeskdubai.com). Not an official Dubai Government publication and not endorsed by it.",
+};
+
 const geo = {
   type: "FeatureCollection",
+  attribution: ATTRIBUTION,
   features: communities.map((c) => {
     const props = { id: c.id, name: c.common ?? titleCase(c.name), official: c.name };
     for (const p of PERIODS) {
@@ -333,6 +345,7 @@ const detail = Object.fromEntries(
     }]),
 );
 writeFileSync("public/areas.json", JSON.stringify({
+  attribution: ATTRIBUTION,
   latest,
   periods: PERIODS.map(({ id, label }) => ({ id, label })),
   detail,

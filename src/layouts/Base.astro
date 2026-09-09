@@ -89,6 +89,12 @@ const fullTitle = title === config.brand ? title : `${title} · ${config.brand}`
 
     <footer class="shell" style="margin-top: var(--space-2xl); padding-block: var(--space-l); border-top: 1px solid var(--rule);">
       <p class="meta" style="max-width: 52ch;">{disclaimer(config.brand)}</p>
+      <p class="meta" style="margin-top: var(--space-s); max-width: 62ch;">
+        Contains information from the Dubai Land Department, published via Dubai
+        Pulse under the UAE Federal Open Data Licence. Figures are computed by
+        {config.brand} and this site is neither an official Dubai Government
+        publication nor endorsed by one.
+      </p>
       <p class="meta" style="margin-top: var(--space-s);">
         <a href="/privacy">Privacy</a> &middot; <a href="/terms">Terms</a> &middot; <a href="/method">Method and sources</a>
       </p>
