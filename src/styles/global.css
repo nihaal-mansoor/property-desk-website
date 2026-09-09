@@ -190,11 +190,23 @@
      1440px because the map wants it, and running text at that measure is
      unreadable. Rules between items, no cards (§6.2a). */
   .qa { margin-top: var(--space-xl); }
+  /* Two columns, so the answers use the 1440px shell instead of leaving half
+     of it empty, while each column stays at a reading measure. Full-width
+     running text at this shell would be about 200 characters a line. The
+     column gap and the 68ch cap are set so the two just meet. */
+  .qa-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-2xl);
+  }
   .qa-item {
     max-width: 68ch;
     padding-top: var(--space-m);
     margin-top: var(--space-m);
     border-top: 1px solid var(--rule);
+  }
+  @media (max-width: 64rem) {
+    .qa-grid { grid-template-columns: 1fr; }
   }
   .qa-item h3 { margin: 0 0 var(--space-2xs); font-weight: 600; }
   .qa-item p { margin: 0; color: var(--ink-2); }
@@ -342,6 +354,34 @@
   .lede {
     max-width: 62ch; margin: var(--space-s) 0 0;
     font-size: var(--step-0); color: var(--ink-2);
+  }
+
+  /* The opening. Heading and answer on the left, the market-wide figures those
+     sentences quote on the right, so the full width carries something rather
+     than being padded out. Hairline rules and mono figures, per the archetype;
+     no cards, no borders around them. */
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: var(--space-l) var(--space-2xl);
+    align-items: end;
+  }
+  .hero-figs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-m) var(--space-l);
+  }
+  .fig { border-top: 1px solid var(--rule-2); padding-top: var(--space-xs); }
+  .fig-n {
+    font-family: var(--font-mono);
+    font-size: var(--step-3);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .fig-l { font-size: var(--step--1); color: var(--ink-2); margin-top: var(--space-2xs); }
+  @media (max-width: 64rem) {
+    .hero { grid-template-columns: 1fr; }
   }
 
   /* The filter bar. One rule above the map, two labelled groups, nothing else

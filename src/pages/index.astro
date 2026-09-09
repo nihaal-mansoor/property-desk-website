@@ -102,10 +102,25 @@ const listing = (arr: C[], value: (c: C) => string) => {
 const psfOf = (c: C) => fmt.format(at(c).psf);
 const pc = (n: number) => `${n > 0 ? "+" : ""}${n} per cent`;
 
+/* The register writes bedroom counts as "1 B/R". Spelled out for prose, and
+   for the question text, which is the part a search engine matches on. */
+const WORDS = ["", "one", "two", "three", "four", "five", "six", "seven"];
+const roomsPhrase = (r: string) => {
+  const m = /^(\d+)\s*b\/r$/i.exec(r.trim());
+  return m ? `${WORDS[+m[1]] ?? m[1]}-bedroom` : r.trim().toLowerCase();
+};
+const t12 = s12.typical, t10 = s10.typical;
+const tWord = roomsPhrase(t12.rooms);
+const tNoun = /bedroom|studio/.test(tWord) ? "apartment" : "property";
+
 const faqs: { q: string; a: string }[] = [
   {
     q: "What is the average price per square foot in Dubai?",
     a: `The median registered sale in the twelve months to ${asOf} was AED ${fmt.format(s12.psf)} per square foot, across ${fmt.format(s12.sales)} sales. Across the ${solid.length} communities with at least 100 sales, medians run from AED ${fmt.format(psfSorted[0])} to AED ${fmt.format(psfSorted.at(-1)!)}, so one city-wide number hides most of what decides a purchase. The median is used here rather than the mean because a small number of very large sales pulls an average upward.`,
+  },
+  {
+    q: `How much does a ${tWord} ${tNoun} cost in Dubai?`,
+    a: `The commonest sale on the register over the last twelve months was a ${tWord}, and its median was AED ${fmt.format(t12.price)} for about ${fmt.format(t12.sqft)} square feet, across ${fmt.format(t12.n)} sales. Over ten years the median for the same size of home was AED ${fmt.format(t10.price)}. These are medians across the whole city, and the answer moves a long way by community: the price per square foot below runs from AED ${fmt.format(psfSorted[0])} to AED ${fmt.format(psfSorted.at(-1)!)}.`,
   },
   {
     q: "Which areas of Dubai are the most expensive?",
@@ -181,16 +196,38 @@ const schema = [
   schema={schema}
 >
   <div class="shell" style="padding-block: var(--space-l) 0;">
-    <h1>Dubai property prices, community by community</h1>
-    <!-- The opening paragraph is the answer, not an introduction to one. It is
-         the passage a search result or an assistant will quote, so it carries
-         the figure, the window and the sample size in its first sentence. -->
-    <p class="lede">
-      The median Dubai home sold for <strong>AED {fmt.format(s12.psf)} per square foot</strong>{" "}
-      in the twelve months to {asOf}, across {fmt.format(s12.sales)} registered sales.
-      Community medians run from AED {fmt.format(psfSorted[0])} to AED {fmt.format(psfSorted.at(-1)!)}.
-      These are prices registered with the Land Department after completion, not asking prices.
-    </p>
+    <div class="hero">
+      <div>
+        <h1>Dubai property prices, community by community</h1>
+        <!-- The opening paragraph is the answer, not an introduction to one. It
+             is the passage a search result or an assistant will quote, so it
+             carries the figure, the window and the sample size in its first
+             sentence. -->
+        <p class="lede">
+          The median Dubai home sold for <strong>AED {fmt.format(s12.psf)} per square foot</strong>{" "}
+          in the twelve months to {asOf}, across {fmt.format(s12.sales)} registered sales.
+          Community medians run from AED {fmt.format(psfSorted[0])} to AED {fmt.format(psfSorted.at(-1)!)}.
+          These are prices registered with the Land Department after completion, not asking prices.
+        </p>
+      </div>
+
+      <!-- The same four figures the paragraph beside it quotes, set where the
+           width would otherwise be empty. Not a summary of the page: the
+           city-wide numbers the community figures below are measured against. -->
+      <dl class="hero-figs">
+        {[
+          { n: fmt.format(s12.psf), l: "Median AED per square foot" },
+          { n: `${s12.growth > 0 ? "+" : ""}${s12.growth}%`, l: "Change on the twelve months before" },
+          { n: fmt.format(s12.sales), l: "Registered sales" },
+          { n: `${s12.offplan}%`, l: "Bought off-plan from a developer" },
+        ].map((f) => (
+          <div class="fig">
+            <dt class="fig-n">{f.n}</dt>
+            <dd class="fig-l">{f.l}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
 
     <!-- One bar, two controls, immediately above the map it drives. The copy
          that used to explain each of them lives in the labels now. -->
@@ -321,7 +358,7 @@ const schema = [
 
     <section style="margin-top: var(--space-xl);">
       <h2>Every community with enough sales to report</h2>
-      <p class="meta" style="margin-top: var(--space-2xs); max-width: 62ch;">
+      <p class="meta" style="margin-top: var(--space-2xs); max-width: 90ch;">
         {ranked.length} of {cs.length} over the last twelve months. The rest
         recorded too few sales to publish a median from. Choose a longer period
         above and more of the map fills in.
@@ -357,15 +394,17 @@ const schema = [
 
     <section class="qa">
       <h2>Questions this data answers</h2>
-      {faqs.map((f) => (
-        <div class="qa-item">
-          <h3>{f.q}</h3>
-          <p>{f.a}</p>
-        </div>
-      ))}
+      <div class="qa-grid">
+        {faqs.map((f) => (
+          <div class="qa-item">
+            <h3>{f.q}</h3>
+            <p>{f.a}</p>
+          </div>
+        ))}
+      </div>
     </section>
 
-    <p class="meta" style="margin-top: var(--space-xl); max-width: 62ch;">
+    <p class="meta" style="margin-top: var(--space-xl); max-width: 90ch;">
       Source: {(map as any).source}. Names are the official cadastral ones, with the
       familiar name shown first where they differ, because nobody searches for
       Al Thanyah Fifth. How this is built is on <a href="/method">the method page</a>.

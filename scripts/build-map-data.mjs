@@ -356,6 +356,10 @@ for (const p of PERIODS) {
   summary[p.id] = v && {
     psf: v.psf, growth: v.growth, sales: v.sales,
     offplan: v.offplan, financed: v.financed,
+    /* The commonest bedroom count city-wide, with its median size and price.
+       "How much is a one-bedroom in Dubai" is asked far more often than
+       anything expressed per square foot. */
+    typical: v.typical,
     reportable: communities.filter((c) => c.periods[p.id]?.psf != null).length,
   };
 }
