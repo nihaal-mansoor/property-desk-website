@@ -265,11 +265,16 @@ const schema = [
          happens, and it only changes on click. -->
     <div id="map-tip" class="map-tip" aria-hidden="true" hidden></div>
 
-    <aside class="map-panel" aria-live="polite">
+    <!-- Rendered hidden and revealed by the script: with no JavaScript the
+         panel cannot be re-shown, so offering to hide it would be a trap. -->
+    <button type="button" id="p-toggle" class="btn btn-quiet map-toggle"
+            aria-expanded="true" aria-controls="map-panel" hidden>Hide panel</button>
+
+    <aside class="map-panel" id="map-panel" aria-live="polite">
       <div class="panel-head">
         <div style="min-width:0;">
           <p class="meta" style="margin:0;" id="p-hint">Click any area on the map</p>
-          <h2 id="p-name" style="font-size: var(--step-2); margin-top: var(--space-2xs);">{named(top)}</h2>
+          <h2 id="p-name" data-id={top.id} style="font-size: var(--step-2); margin-top: var(--space-2xs);">{named(top)}</h2>
           <p class="meta" id="p-official" style="margin-top: var(--space-2xs);">{top.name}</p>
         </div>
         <button type="button" id="p-compare" class="btn btn-quiet" hidden>Compare</button>

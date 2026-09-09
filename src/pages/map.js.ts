@@ -108,6 +108,16 @@ const JS = String.raw`
         '<span class="row-value">' + b + '</span></div>').join("");
     }
 
+    /* Developers register the same project under whatever casing they typed, so
+       one area lists "AZIZI VENICE 14" next to "azizi venice 13". Normalised for
+       display only; the register's own spelling is what we matched on.
+       Roman numerals and short tokens are left alone so "DIFC" and "JVC" survive. */
+    function projectName(raw) {
+      return String(raw).trim().toLowerCase().replace(/[^\s\/-]+/g, (w) =>
+        /^\d/.test(w) ? w : w.charAt(0).toUpperCase() + w.slice(1),
+      );
+    }
+
     function fillDetail(id) {
       const d = detail[id];
       const pd = d?.periods?.[period] ?? null;
@@ -137,7 +147,7 @@ const JS = String.raw`
            has traded, never what is for sale. */
         const list = pd?.projects ?? [];
         projects.innerHTML = list.length
-          ? rowsHtml(list.map((p) => [p.name, p.n + " sales"]))
+          ? rowsHtml(list.map((p) => [projectName(p.name), fmt.format(p.n) + " sales"]))
           : '<p class="meta" style="margin:0">No named project activity in this period.</p>';
       }
 
@@ -157,6 +167,58 @@ const JS = String.raw`
       }
     }
 
+    /* Hide and show the rail. The button is revealed here rather than in the
+       markup because without this script there is no way to bring the panel
+       back, and a control that only works one way is worse than none. */
+    /* The rail covers the left quarter of the canvas, so the city has to be
+       framed into what is left of it or half of Dubai sits behind the panel.
+       Kept here so hiding the rail can re-frame into the width it gives back. */
+    let bounds = null;
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    function frame(animate) {
+      if (!bounds) return;
+      const panel = document.getElementById("map-panel");
+      /* Only an overlapping rail steals width. Below 48rem it sits under the
+         map and getComputedStyle reports static. */
+      const overlaps = panelOpen && panel && getComputedStyle(panel).position === "absolute";
+      map.fitBounds(bounds, {
+        padding: {
+          top: 40, right: 40, bottom: 40,
+          left: 40 + (overlaps ? panel.getBoundingClientRect().width : 0),
+        },
+        duration: animate && !reduceMotion ? 300 : 0,
+      });
+    }
+
+    const shell = document.querySelector(".map-full");
+    const toggle = document.getElementById("p-toggle");
+    let panelOpen = true;
+    /* Kept so the show button can name what was clicked while hidden. A click
+       that appears to do nothing reads as a broken map. */
+    let lastName = "";
+
+    function paintToggle() {
+      if (!toggle) return;
+      toggle.setAttribute("aria-expanded", String(panelOpen));
+      toggle.textContent = panelOpen
+        ? "Hide panel"
+        : lastName ? "Show " + lastName : "Show panel";
+    }
+
+    function setPanel(open) {
+      panelOpen = open;
+      if (shell) shell.classList.toggle("panel-off", !open);
+      paintToggle();
+      frame(true);
+    }
+
+    if (toggle) {
+      toggle.hidden = false;
+      toggle.addEventListener("click", () => setPanel(!panelOpen));
+      paintToggle();
+    }
+
     function markSelected(id) {
       if (selectedId !== null) map.setFeatureState({ source: "communities", id: selectedId }, { selected: false });
       selectedId = id ?? null;
@@ -165,6 +227,8 @@ const JS = String.raw`
 
     function clearSelection() {
       markSelected(null);
+      lastName = "";
+      paintToggle();
       const hint = document.getElementById("p-hint");
       if (hint) hint.textContent = "Click any area on the map";
       const btn = document.getElementById("p-compare");
@@ -196,6 +260,8 @@ const JS = String.raw`
       }
       fillDetail(p.id);
       markSelected(id);
+      lastName = p.name;
+      paintToggle();
       const hint = document.getElementById("p-hint");
       if (hint) hint.textContent = "Selected";
       const btn = document.getElementById("p-compare");
@@ -258,7 +324,15 @@ const JS = String.raw`
           }
         }
       }
-      map.fitBounds([[west, south], [east, north]], { padding: 40, duration: 0 });
+      bounds = [[west, south], [east, north]];
+      frame(false);
+
+      /* Fill in the area the server rendered. A full-height rail makes the
+         gap obvious: "Projects trading here" and "Latest registered sales"
+         were bare headings until the first click, because only select() ever
+         called this. */
+      const initial = document.getElementById("p-name")?.dataset.id;
+      if (initial) fillDetail(initial);
 
       /* Hover shows a label at the cursor and nothing else. The panel only
          changes on click, because a panel that follows the pointer can only be

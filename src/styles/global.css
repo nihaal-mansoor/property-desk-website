@@ -296,6 +296,9 @@
     max-width: var(--shell);
     margin: var(--space-m) auto 0;
     padding-inline: var(--gutter);
+    /* One place the rail's width is declared. The toggle button is positioned
+       from it too, so the two cannot drift apart. */
+    --panel-w: min(23rem, 40%);
   }
   .map-canvas {
     width: 100%;
@@ -304,15 +307,19 @@
     border: 1px solid var(--rule);
   }
 
+  /* The rail takes the whole left edge of the map rather than floating in the
+     corner. It used to be capped at 32rem so a long project list could not run
+     the height of the map; with the full height available that list simply
+     scrolls, and the map keeps an uninterrupted rectangle to its right.
+     Inset by 1px so it sits inside the canvas border rather than on it. */
   .map-panel {
-    position: absolute; top: var(--space-s); left: calc(var(--gutter) + var(--space-s)); z-index: 2;
-    width: min(19rem, calc(100% - 2 * var(--space-s)));
+    position: absolute; top: 1px; bottom: 1px;
+    left: calc(var(--gutter) + 1px); z-index: 2;
+    width: var(--panel-w);
     padding: var(--space-s);
     background: var(--paper);
-    border: 1px solid var(--rule-2);
-    /* Stops short of the bottom so a long project list cannot run the full
-       height of the map and crowd everything else out. */
-    max-height: min(32rem, calc(100% - 4 * var(--space-s)));
+    border-right: 1px solid var(--rule-2);
+    overscroll-behavior: contain;
     overflow-y: auto;
   }
   /* Bottom right, clear of the panel on the left. Lifted above MapLibre's own
@@ -324,6 +331,25 @@
     background: var(--paper);
     border: 1px solid var(--rule-2);
   }
+  /* Hide and show. Sits just clear of the rail when open and slides to the map
+     edge when closed, both derived from --panel-w. Needs its own opaque ground:
+     .btn-quiet is transparent, which is fine on the page and illegible on a
+     basemap. */
+  .map-toggle {
+    position: absolute; z-index: 3;
+    top: var(--space-s);
+    left: calc(var(--gutter) + 1px + var(--panel-w) + var(--space-s));
+    max-width: calc(100% - 2 * var(--gutter) - 2 * var(--space-s));
+    padding: 0.45em 0.9em;
+    background: var(--paper);
+    font-size: var(--step--1);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: block;
+  }
+  .map-toggle:hover { background: var(--sunk); opacity: 1; }
+  .map-full.panel-off .map-panel { display: none; }
+  .map-full.panel-off .map-toggle { left: calc(var(--gutter) + 1px + var(--space-s)); }
+
   .map-noscript {
     position: absolute; inset: 0; z-index: 3; display: grid; place-items: center;
     padding: var(--space-l); background: var(--paper); text-align: center;
@@ -333,7 +359,13 @@
   @media (max-width: 48rem) {
     .map-canvas { height: 62vh; }
     .map-panel, .map-legend { position: static; width: auto; margin: var(--space-s) var(--gutter) 0; }
-    .map-panel { max-height: none; }
+    .map-panel { max-height: none; border: 1px solid var(--rule-2); }
+    /* Static on a phone: the panel is below the map there, so there is no left
+       edge to sit against and nothing for it to overlap. */
+    .map-toggle {
+      position: static; margin: var(--space-s) var(--gutter) 0;
+      width: fit-content; max-width: none;
+    }
   }
 
   /* MapLibre paints its own canvas background before tiles arrive, and it does
