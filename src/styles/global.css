@@ -186,6 +186,49 @@
 }
 
 @layer components {
+  /* The enquiry form. One CTA colour across the site (§6.2a), square corners,
+     hairline rules, no cards. */
+  .enquire { border-top: 1px solid var(--rule); margin-top: var(--space-xl); padding-top: var(--space-l); }
+  .enquire-inner { max-width: 46rem; }
+  .form { margin-top: var(--space-m); display: grid; gap: var(--space-s); }
+  .field-row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: var(--space-s); }
+  @media (max-width: 40rem) { .field-row { grid-template-columns: 1fr; } }
+  .field-wrap { display: grid; gap: var(--space-2xs); }
+  .field-wrap label { font-size: var(--step--1); font-weight: 500; }
+  .field-wrap input, .field-wrap textarea {
+    width: 100%; padding: 0.62rem 0.75rem;
+    border: 1px solid var(--rule-2); border-radius: var(--radius);
+    background: var(--surface); color: var(--ink);
+    font-family: var(--font-sans); font-size: var(--step-0);
+  }
+  .field-wrap input:focus-visible, .field-wrap textarea:focus-visible {
+    outline: 2px solid var(--signal); outline-offset: 1px;
+  }
+  .field-wrap input[readonly] { background: var(--sunk); color: var(--ink-2); }
+  .field-wrap input[aria-invalid="true"], .field-wrap textarea[aria-invalid="true"] {
+    border-color: var(--bad, #B03A16);
+  }
+  .field-err { margin: 0; font-size: var(--step--1); color: var(--bad, #B03A16); }
+
+  /* Hidden from sight and from assistive technology. Never display:none, which
+     some bots skip; off-canvas, which they fill. */
+  .hp {
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+
+  .consent { display: grid; grid-template-columns: auto 1fr; gap: var(--space-xs); align-items: start; }
+  .consent input { margin-top: 0.25rem; width: 1rem; height: 1rem; accent-color: var(--signal); }
+  .consent label { font-size: var(--step--1); color: var(--ink-2); }
+  .form-foot { display: flex; align-items: center; gap: var(--space-m); flex-wrap: wrap; }
+  .form-status { margin: 0; }
+  .form-status.ok { color: var(--ink); font-weight: 500; }
+  .cf-turnstile { min-height: 65px; }
+
+  /* Contextual entry points. Same colour as every other CTA on the site. */
+  .cta-row { margin-top: var(--space-m); display: flex; gap: var(--space-s); flex-wrap: wrap; align-items: baseline; }
+  .cta { background: var(--signal); color: var(--signal-ink); border: 0; }
+
   /* The answers below the table. Reading width, not table width: the shell is
      1440px because the map wants it, and running text at that measure is
      unreadable. Rules between items, no cards (§6.2a). */

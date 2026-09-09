@@ -1,0 +1,98 @@
+---
+import { CONSENT_TEXT } from "@uaeprop/site-kit";
+import config from "../../site.config";
+
+/*
+ * The site's only contact channel, and deliberately so: a form publishes
+ * nothing. A mailto: exposes an address and a WhatsApp link exposes a number,
+ * and neither is going on this site.
+ *
+ * Every input is validated again on the server; the client copy is UX only.
+ * (§4.4) The honeypot is a real field a bot will fill and a person cannot see,
+ * so it is hidden from sight AND from assistive technology, and carries
+ * autocomplete="off" and tabindex="-1" so a password manager never fills it.
+ */
+const siteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
+---
+
+<section id="enquire" class="enquire">
+  <div class="enquire-inner">
+    <h2>Ask about an area</h2>
+    <p class="meta" style="margin-top: var(--space-2xs); max-width: 62ch;">
+      Tell us what you are trying to work out and we will introduce you to a
+      licensed broker who covers it. {config.brand} is not a broker and does not
+      transact.
+    </p>
+
+    <form id="lead-form" class="form" method="post" action="/api/lead" novalidate>
+      <div class="field-row">
+        <div class="field-wrap">
+          <label for="f-name">Your name</label>
+          <input id="f-name" name="name" type="text" required minlength="2" maxlength="80"
+                 autocomplete="name" aria-describedby="e-name" />
+          <p class="field-err" id="e-name" hidden></p>
+        </div>
+        <div class="field-wrap">
+          <label for="f-email">Email</label>
+          <input id="f-email" name="email" type="email" required maxlength="160"
+                 autocomplete="email" aria-describedby="e-email" />
+          <p class="field-err" id="e-email" hidden></p>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-wrap">
+          <label for="f-phone">Phone, with country code</label>
+          <input id="f-phone" name="phone" type="tel" required maxlength="24"
+                 autocomplete="tel" placeholder="+971 50 000 0000" aria-describedby="e-phone" />
+          <p class="field-err" id="e-phone" hidden></p>
+        </div>
+        <div class="field-wrap">
+          <label for="f-topic">About</label>
+          <input id="f-topic" name="sourceTopic" type="text" readonly maxlength="160"
+                 value={config.topic} />
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <label for="f-message">What are you trying to work out? <span class="meta">(optional)</span></label>
+        <textarea id="f-message" name="message" rows="4" maxlength="1000"
+                  aria-describedby="e-message"></textarea>
+        <p class="field-err" id="e-message" hidden></p>
+      </div>
+
+      <!-- Honeypot. Hidden from sight and from assistive technology, and never
+           focusable, so only a bot reaches it. -->
+      <div class="hp" aria-hidden="true">
+        <label for="f-company">Company</label>
+        <input id="f-company" name="company" type="text" tabindex="-1" autocomplete="off" />
+      </div>
+
+      <input type="hidden" name="sourceDomain" value={config.domain} />
+      <input type="hidden" name="sourcePage" id="f-page" value="/" />
+      <!-- Set by the script on load. Build time would be months stale, which
+           would make the server's minimum-time trap pass for everyone. -->
+      <input type="hidden" name="renderedAt" id="f-rendered" value="" />
+
+      <div class="consent">
+        <input id="f-consent" name="consent" type="checkbox" required aria-describedby="e-consent" />
+        <label for="f-consent">{CONSENT_TEXT}</label>
+      </div>
+      <p class="field-err" id="e-consent" hidden></p>
+
+      {siteKey && <div class="cf-turnstile" data-sitekey={siteKey} data-theme="auto"></div>}
+
+      <div class="form-foot">
+        <button type="submit" class="btn cta" id="lead-submit">Send enquiry</button>
+        <p class="form-status meta" id="lead-status" role="status" aria-live="polite"></p>
+      </div>
+    </form>
+
+    <noscript>
+      <p class="meta" style="margin-top: var(--space-s);">
+        This form needs JavaScript, because it is checked for automated
+        submissions before it is accepted.
+      </p>
+    </noscript>
+  </div>
+</section>

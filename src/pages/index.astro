@@ -1,6 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 import config from "../../site.config";
+import EnquiryForm from "../components/EnquiryForm.astro";
 import map from "../data/map.json";
 
 /*
@@ -346,6 +347,11 @@ const schema = [
   </div>
 
   <div class="shell">
+    <div class="cta-row">
+      <button type="button" class="btn cta" data-enquire="area">Ask about this area</button>
+      <span class="meta">We introduce you to a licensed broker who covers it.</span>
+    </div>
+
     <!-- Compare lives here rather than on the map. Three columns of figures on
          top of a map is two things fighting for the same space. -->
     <section id="compare" class="compare" hidden>
@@ -397,6 +403,10 @@ const schema = [
       </div>
     </section>
 
+    <div class="cta-row">
+      <button type="button" class="btn cta" data-enquire="Community table">Ask which area fits what you have</button>
+    </div>
+
     <section class="qa">
       <h2>Questions this data answers</h2>
       <div class="qa-grid">
@@ -408,6 +418,8 @@ const schema = [
         ))}
       </div>
     </section>
+
+    <EnquiryForm />
 
     <p class="meta" style="margin-top: var(--space-xl); max-width: 90ch;">
       Source: {(map as any).source}. Names are the official cadastral ones, with the
@@ -422,3 +434,4 @@ const schema = [
 <!-- A module file, not an inline script: the CSP carries no unsafe-inline, and
      the browser resolves MapLibre's worker relative to the vendored module. -->
 <script type="module" src="/map.js"></script>
+<script type="module" src="/form.js"></script>
