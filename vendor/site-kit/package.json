@@ -1,0 +1,44 @@
+{
+  "name": "@uaeprop/site-kit",
+  "version": "0.1.0",
+  "description": "Headless shared logic for the UAE property content network. No UI, no CSS. Vendored copy, pinned to this site (CLAUDE.md 8).",
+  "type": "module",
+  "license": "UNLICENSED",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./analytics": {
+      "types": "./dist/analytics/index.d.ts",
+      "default": "./dist/analytics/index.js"
+    },
+    "./leads": {
+      "types": "./dist/leads/index.d.ts",
+      "default": "./dist/leads/index.js"
+    },
+    "./legal": {
+      "types": "./dist/legal/index.d.ts",
+      "default": "./dist/legal/index.js"
+    },
+    "./security": {
+      "types": "./dist/security/index.d.ts",
+      "default": "./dist/security/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "zod": "^3.25.76"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ]
+}

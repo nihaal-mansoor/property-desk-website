@@ -8,7 +8,7 @@
     "preview": "astro preview",
     "typecheck": "astro check",
     "gate:a11y": "html-validate \"dist/**/*.html\"",
-    "gate:compliance": "node ../site-kit/src/testing/gate.ts ./dist propertydeskdubai.com",
+    "gate:compliance": "node ./vendor/site-kit/src/testing/gate.ts ./dist propertydeskdubai.com",
     "gate": "npm run build && npm run gate:a11y && npm run gate:compliance",
     "data": "node scripts/build-map-data.mjs && node scripts/vendor-maplibre.mjs",
     "prebuild": "node scripts/vendor-maplibre.mjs"
@@ -18,7 +18,7 @@
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@iconify-json/lucide": "^1.2.129",
-    "@uaeprop/site-kit": "file:../site-kit",
+    "@uaeprop/site-kit": "file:./vendor/site-kit",
     "astro": "^7.2.10",
     "astro-icon": "^1.2.0",
     "maplibre-gl": "^6.8.0"
