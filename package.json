@@ -20,6 +20,7 @@
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@iconify-json/lucide": "^1.2.129",
     "@uaeprop/site-kit": "file:./vendor/site-kit",
+    "@vercel/analytics": "^2.0.1",
     "astro": "^7.2.10",
     "astro-icon": "^1.2.0",
     "maplibre-gl": "^6.8.0"

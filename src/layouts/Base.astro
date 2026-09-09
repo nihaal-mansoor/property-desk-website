@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import { disclaimer } from "@uaeprop/site-kit";
+import Analytics from "@vercel/analytics/astro";
 import config from "../../site.config";
 
 interface Props {
@@ -99,5 +100,13 @@ const fullTitle = title === config.brand ? title : `${title} · ${config.brand}`
         <a href="/privacy">Privacy</a> &middot; <a href="/terms">Terms</a> &middot; <a href="/method">Method and sources</a>
       </p>
     </footer>
+    <!--
+      Vercel Web Analytics. Cookieless and device-storage free, so it sits
+      outside the opt-in gate that §4.6 puts around GA4 and Clarity; there is
+      nothing stored on the reader's device to consent to. It ships as a
+      bundled module under /_astro, never inline, and the script and beacon
+      origins are already in the CSP (§4.3) via site-kit's `analytics: true`.
+    -->
+    <Analytics />
   </body>
 </html>

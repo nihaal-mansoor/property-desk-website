@@ -20,6 +20,14 @@ export default defineConfig({
        it 404s and the map loads its style and sprites and then renders nothing,
        with no error to explain why. Excluding it leaves the worker resolvable. */
     optimizeDeps: { exclude: ["maplibre-gl"] },
+    /* Astro inlines a small bundled <script> straight into the HTML, and the
+       CSP has no 'unsafe-inline' and no nonce, so an inlined script is dead on
+       arrival in production with nothing in the build to say so (CLAUDE.md
+       §4.1). @vercel/analytics is small enough to trip this. Forcing the
+       inline limit to zero keeps every script an external file under /_astro,
+       which script-src 'self' allows. Nothing here was being inlined as a data
+       URI before, so this costs no extra requests. */
+    build: { assetsInlineLimit: 0 },
   },
   build: { inlineStylesheets: "never" },
 });
