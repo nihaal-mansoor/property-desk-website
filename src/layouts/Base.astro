@@ -9,9 +9,11 @@ interface Props {
   /** Path without the origin, for the canonical. */
   path: string;
   noindex?: boolean;
+  /** Extra JSON-LD graph nodes for this route, beyond the Organization below. */
+  schema?: readonly unknown[];
 }
 
-const { title, description, path, noindex = false } = Astro.props;
+const { title, description, path, noindex = false, schema = [] } = Astro.props;
 const canonical = new URL(path, Astro.site).href;
 const ogImage = new URL(config.og.image, Astro.site).href;
 /* Under 60 characters as rendered, brand suffix included. */
@@ -42,10 +44,31 @@ const fullTitle = title === config.brand ? title : `${title} · ${config.brand}`
 
     <script type="application/ld+json" set:html={JSON.stringify({
       "@context": "https://schema.org",
-      "@type": "Organization",
-      name: config.brand,
-      url: `https://${config.domain}`,
-      description: "Independent property research for the UAE. Not a licensed broker.",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": `https://${config.domain}/#org`,
+          name: config.brand,
+          url: `https://${config.domain}`,
+          description: "Independent property research for the UAE. Not a licensed broker.",
+        },
+        {
+          "@type": "WebSite",
+          "@id": `https://${config.domain}/#site`,
+          name: config.brand,
+          url: `https://${config.domain}`,
+          publisher: { "@id": `https://${config.domain}/#org` },
+        },
+        {
+          "@type": "WebPage",
+          "@id": `${canonical}#page`,
+          url: canonical,
+          name: fullTitle,
+          description,
+          isPartOf: { "@id": `https://${config.domain}/#site` },
+        },
+        ...schema,
+      ],
     })} />
   </head>
 

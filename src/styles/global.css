@@ -186,6 +186,19 @@
 }
 
 @layer components {
+  /* The answers below the table. Reading width, not table width: the shell is
+     1440px because the map wants it, and running text at that measure is
+     unreadable. Rules between items, no cards (§6.2a). */
+  .qa { margin-top: var(--space-xl); }
+  .qa-item {
+    max-width: 68ch;
+    padding-top: var(--space-m);
+    margin-top: var(--space-m);
+    border-top: 1px solid var(--rule);
+  }
+  .qa-item h3 { margin: 0 0 var(--space-2xs); font-weight: 600; }
+  .qa-item p { margin: 0; color: var(--ink-2); }
+
   .shell { max-width: var(--shell); margin-inline: auto; padding-inline: var(--gutter); }
   .col   { max-width: var(--measure); margin-inline: auto; padding-inline: var(--gutter); }
 

@@ -212,7 +212,13 @@ function simplify(pts, tol) {
   return pts.filter((_, i) => keep[i]);
 }
 
-const titleCase = (s) => s.trim().toLowerCase().replace(/\b\w/g, (m) => m.toUpperCase());
+/* The cadastral register abbreviates "industrial" and does not always put a
+   space after the full stop, so twelve communities arrive as "AL QOUZ
+   IND.SECOND". Expanded here rather than in twelve COMMON entries. */
+const titleCase = (s) =>
+  s.trim().toLowerCase()
+    .replace(/\bind\.\s*/g, "industrial ")
+    .replace(/\b\w/g, (m) => m.toUpperCase());
 
 /* ---------- assemble ---------- */
 /**
@@ -333,8 +339,38 @@ writeFileSync("public/areas.json", JSON.stringify({
 }));
 console.log(`public/areas.json           ${(readFileSync("public/areas.json").length/1024).toFixed(0)} KB`);
 
+/* Market-wide figures, pooled across every mapped community.
+   The page quotes these as its opening answer, and an answer that cannot say
+   how many sales it rests on is the kind this site exists to replace. Pooling
+   references rather than copying rows: these arrays already exist. */
+const pooled = { sales: [], mortgages: [], recent: [] };
+for (const c of communities) {
+  const s = stats.get(c.id);
+  if (!s) continue;
+  pooled.sales.push(...s.sales);
+  pooled.mortgages.push(...s.mortgages);
+}
+const summary = {};
+for (const p of PERIODS) {
+  const v = periodStats(pooled, p.days);
+  summary[p.id] = v && {
+    psf: v.psf, growth: v.growth, sales: v.sales,
+    offplan: v.offplan, financed: v.financed,
+    reportable: communities.filter((c) => c.periods[p.id]?.psf != null).length,
+  };
+}
+
 const withData = communities.filter((c) => c.periods["12m"]?.psf != null).length;
-writeFileSync(OUT, JSON.stringify({ generated: new Date().toISOString().slice(0, 10), latest, communities }));
+writeFileSync(OUT, JSON.stringify({
+  generated: new Date().toISOString().slice(0, 10),
+  latest,
+  /* §4.7: every figure on the site traces back to this line. It was missing,
+     and the page rendered "Source: ." for it. */
+  source: "Dubai Land Department transaction register, via Dubai Pulse open data",
+  totalSales: pooled.sales.length,
+  summary,
+  communities,
+}));
 const kb = (readFileSync(OUT).length / 1024).toFixed(0);
 console.log(`${communities.length} communities, ${withData} with 12-month price data`);
 for (const p of PERIODS) {

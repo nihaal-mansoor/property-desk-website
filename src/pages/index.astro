@@ -44,26 +44,152 @@ function band(v: number | null) {
   return RAMP[0];
 }
 
+/* Same expansion the build script applies to the geojson labels, so the table
+   and the map never disagree about a community's name. */
 const named = (c: C) =>
-  c.common ?? c.name.trim().toLowerCase().replace(/\b\w/g, (w) => w.toUpperCase());
+  c.common ??
+  c.name.trim().toLowerCase()
+    .replace(/\bind\.\s*/g, "industrial ")
+    .replace(/\b\w/g, (w) => w.toUpperCase());
 const ranked = [...active].sort((a, b) => at(b).psf - at(a).psf);
 const fmt = new Intl.NumberFormat("en-AE");
 /* The dearest community is a 22-sale island, which is a poor thing to open on.
    Default to the busiest market instead. */
 const top = [...ranked].sort((a, b) => at(b).sales - at(a).sales)[0];
+
+/* ------------------------------------------------------------------ *
+ * Answers, generated from the same figures the map draws.
+ *
+ * Every sentence below is built from `map`, never typed. A hand-written
+ * "International City is the most affordable" becomes false the first time
+ * the register is refreshed, and nobody notices, because prose does not
+ * fail a build. The FAQ markup and the FAQPage JSON-LD are rendered from
+ * one array for the same reason: schema that disagrees with the visible
+ * text on the page is a structured-data penalty, not a ranking boost.
+ * ------------------------------------------------------------------ */
+const sum = (map as any).summary as Record<string, any>;
+const s12 = sum["12m"], s10 = sum["10y"];
+const asOf = new Date((map as any).latest).toLocaleDateString("en-GB", {
+  day: "numeric", month: "long", year: "numeric",
+});
+
+/* A hundred sales is the floor for a headline ranking. Below it a single
+   tower or a land plot decides the answer. */
+const solid = active.filter((c) => at(c).sales >= 100);
+const byPsf = [...solid].sort((a, b) => at(a).psf - at(b).psf);
+const dearest = [...byPsf].reverse().slice(0, 5);
+const cheapest = byPsf.slice(0, 5);
+const busiest = [...active].sort((a, b) => at(b).sales - at(a).sales).slice(0, 5);
+const offplanTop = [...solid].sort((a, b) => at(b).offplan - at(a).offplan).slice(0, 3);
+const offplanSame = offplanTop.every((c) => at(c).offplan === at(offplanTop[0]).offplan);
+const offplanNames = offplanTop.map((c) => named(c)).join(", ").replace(/, ([^,]*)$/, " and $1");
+const comparable = active.filter((c) => at(c).growth !== null);
+const fell = comparable.filter((c) => at(c).growth < 0);
+const fellNamed = [...fell].sort((a, b) => at(a).growth - at(b).growth)
+  .filter((c) => at(c).sales >= 500).slice(0, 3);
+const belowMedian = busiest.filter((c) => at(c).psf < s12.psf).length;
+/* Ranged on the same >=100-sale floor as the rankings below. Taken across all
+   95 reportable communities the span is AED 167 to 9,233, both ends set by
+   markets of a few dozen sales, and it would contradict the answers further
+   down the page. */
+const psfSorted = solid.map((c) => at(c).psf).sort((a, b) => a - b);
+
+/** "A at 1, B at 2 and C at 3" */
+const listing = (arr: C[], value: (c: C) => string) => {
+  const parts = arr.map((c) => `${named(c)} at ${value(c)}`);
+  return parts.length < 2 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
+};
+const psfOf = (c: C) => fmt.format(at(c).psf);
+const pc = (n: number) => `${n > 0 ? "+" : ""}${n} per cent`;
+
+const faqs: { q: string; a: string }[] = [
+  {
+    q: "What is the average price per square foot in Dubai?",
+    a: `The median registered sale in the twelve months to ${asOf} was AED ${fmt.format(s12.psf)} per square foot, across ${fmt.format(s12.sales)} sales. Across the ${solid.length} communities with at least 100 sales, medians run from AED ${fmt.format(psfSorted[0])} to AED ${fmt.format(psfSorted.at(-1)!)}, so one city-wide number hides most of what decides a purchase. The median is used here rather than the mean because a small number of very large sales pulls an average upward.`,
+  },
+  {
+    q: "Which areas of Dubai are the most expensive?",
+    a: `Among communities with at least 100 registered sales in the last twelve months, the highest medians per square foot were ${listing(dearest, (c) => `AED ${psfOf(c)}`)}. These are medians for whole communities, so they cover a wide spread of buildings, ages and sizes.`,
+  },
+  {
+    q: "Which areas of Dubai are the most affordable?",
+    a: `On the same basis the lowest were ${listing(cheapest, (c) => `AED ${psfOf(c)}`)}. A low price per square foot is not the same as a low purchase price, because unit sizes differ sharply between communities.`,
+  },
+  {
+    q: "Are Dubai property prices rising or falling?",
+    a: `The city-wide median rose ${s12.growth} per cent over the twelve months to ${asOf}, measured against the twelve months immediately before. Growth was not uniform: ${fell.length} of the ${comparable.length} communities with a comparable figure fell over the same period, among them ${listing(fellNamed, (c) => pc(at(c).growth))}. Very large swings in recently launched communities usually reflect a change in what is being sold there rather than a repricing of the same stock, which is why the longer periods above are the more reliable guide.`,
+  },
+  {
+    q: "Which Dubai communities have the most property sales?",
+    a: `Over the last twelve months the busiest by registered sales were ${listing(busiest, (c) => fmt.format(at(c).sales))}. Volume and price move independently: ${["none","one","two","three","four","five"][belowMedian]} of those five sit below the city-wide median price per square foot.`,
+  },
+  {
+    q: "How much of the Dubai property market is off-plan?",
+    a: `${s12.offplan} per cent of registered sales in the last twelve months were off-plan, meaning bought from a developer before completion rather than from an existing owner. Over ten years the share is ${s10.offplan} per cent. In some communities it is close to the entire market: ${offplanSame ? `${offplanNames} each recorded ${at(offplanTop[0]).offplan} per cent` : listing(offplanTop, (c) => `${at(c).offplan} per cent`)}.`,
+  },
+  {
+    q: "How many Dubai buyers use a mortgage?",
+    a: `Mortgage registrations equalled ${s12.financed} per cent of sales over the last twelve months, and ${s10.financed} per cent over ten years. The figure is low partly because it tracks the off-plan share: a developer payment plan is not a mortgage and never reaches the mortgage register.`,
+  },
+  {
+    q: "Why are these figures different from the ones on property portals?",
+    a: `A portal shows asking prices for property currently on the market. This page shows prices registered with the Land Department after a sale completed. The two separate whenever a property sells for more or less than it was listed at, and it is the registered figure that becomes the comparable a valuer or a bank works from later.`,
+  },
+  {
+    q: "Where does this data come from and how current is it?",
+    a: `Every figure is computed from the ${(map as any).source}. The most recent sale included is dated ${asOf}, and the set covers ${fmt.format((map as any).totalSales)} residential sales. Shops, offices and land plots are excluded. A community needs at least 20 priced sales within a period before a median is published for it, which is why ${active.length} of ${cs.length} communities are reportable over twelve months and ${sum["10y"].reportable} over ten years.`,
+  },
+];
+
+const schema = [
+  {
+    "@type": "Dataset",
+    name: "Dubai residential sale prices by community",
+    description: `Median registered price per square foot, price growth, sales volume, off-plan share and mortgage share for ${cs.length} Dubai communities, over four periods, computed from the Dubai Land Department transaction register.`,
+    url: `https://${config.domain}/`,
+    license: "https://www.dubaipulse.gov.ae/",
+    isAccessibleForFree: true,
+    creator: { "@id": `https://${config.domain}/#org` },
+    temporalCoverage: `2015/${(map as any).latest}`,
+    spatialCoverage: { "@type": "Place", name: "Dubai, United Arab Emirates" },
+    variableMeasured: [
+      "Median price per square foot (AED)",
+      "Price growth against the preceding equal period",
+      "Registered sales volume",
+      "Off-plan share of sales",
+      "Mortgage registrations as a share of sales",
+    ],
+    distribution: [
+      { "@type": "DataDownload", encodingFormat: "application/geo+json", contentUrl: `https://${config.domain}/communities.geojson` },
+    ],
+  },
+  {
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  },
+];
 ---
 
 <Base
-  title={config.brand}
-  description="Every Dubai community, coloured by what property there actually sold for. Built from 1.78 million registered Land Department transactions."
+  title="Dubai property prices by area"
+  description={`Median price per square foot for every Dubai community, from ${fmt.format((map as any).totalSales)} registered Land Department sales. Registered prices, not asking prices.`}
   path="/"
+  schema={schema}
 >
   <div class="shell" style="padding-block: var(--space-l) 0;">
-    <h1>Where the money actually goes in Dubai</h1>
+    <h1>Dubai property prices, community by community</h1>
+    <!-- The opening paragraph is the answer, not an introduction to one. It is
+         the passage a search result or an assistant will quote, so it carries
+         the figure, the window and the sample size in its first sentence. -->
     <p class="lede">
-      Every community, coloured by what actually sold. Registered sales to{" "}
-      <strong>{new Date((map as any).latest).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</strong>,
-      never an asking price.
+      The median Dubai home sold for <strong>AED {fmt.format(s12.psf)} per square foot</strong>{" "}
+      in the twelve months to {asOf}, across {fmt.format(s12.sales)} registered sales.
+      Community medians run from AED {fmt.format(psfSorted[0])} to AED {fmt.format(psfSorted.at(-1)!)}.
+      These are prices registered with the Land Department after completion, not asking prices.
     </p>
 
     <!-- One bar, two controls, immediately above the map it drives. The copy
@@ -229,8 +355,18 @@ const top = [...ranked].sort((a, b) => at(b).sales - at(a).sales)[0];
       </div>
     </section>
 
+    <section class="qa">
+      <h2>Questions this data answers</h2>
+      {faqs.map((f) => (
+        <div class="qa-item">
+          <h3>{f.q}</h3>
+          <p>{f.a}</p>
+        </div>
+      ))}
+    </section>
+
     <p class="meta" style="margin-top: var(--space-xl); max-width: 62ch;">
-      Source: {map.source}. Names are the official cadastral ones, with the
+      Source: {(map as any).source}. Names are the official cadastral ones, with the
       familiar name shown first where they differ, because nobody searches for
       Al Thanyah Fifth. How this is built is on <a href="/method">the method page</a>.
     </p>
