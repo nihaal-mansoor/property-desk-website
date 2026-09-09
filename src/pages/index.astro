@@ -17,7 +17,11 @@ const cs = map.communities as C[];
    land area is desert interior with no residential sales, and letting it set the
    bounds shrinks the city everyone is looking for into a corner. The empty
    communities are still drawn, they just do not get a vote on the framing. */
-const active = cs.filter((c) => c.psf !== null);
+/* Everything server-rendered uses the default window; the script re-colours
+   for any other. */
+const P0 = "12m";
+const at = (c: C) => (c.periods as any)[P0];
+const active = cs.filter((c) => at(c)?.psf != null);
 const lons = active.flatMap((c) => c.rings.flat().map((p) => p[0]));
 const lats = active.flatMap((c) => c.rings.flat().map((p) => p[1]));
 const minX = Math.min(...lons), maxX = Math.max(...lons);
@@ -32,7 +36,7 @@ const pathFor = (c: C) => c.rings.map((r) => `M${r.map(px).join("L")}Z`).join(""
 const RAMP = ["#EAF0F7", "#CBDCEC", "#A3C2DD", "#75A3CA", "#4A82B4", "#2A5F94", "#14406B", "#0B2A48"];
 const NODATA = "#EDEFF2";
 
-const priced = cs.filter((c) => c.psf !== null).map((c) => c.psf as number).sort((a, b) => a - b);
+const priced = active.map((c) => at(c).psf as number).sort((a, b) => a - b);
 const breaks = RAMP.map((_, i) => priced[Math.floor((priced.length * i) / RAMP.length)]);
 function band(v: number | null) {
   if (v === null) return NODATA;
@@ -42,11 +46,11 @@ function band(v: number | null) {
 
 const named = (c: C) =>
   c.common ?? c.name.trim().toLowerCase().replace(/\b\w/g, (w) => w.toUpperCase());
-const ranked = [...cs].filter((c) => c.psf !== null).sort((a, b) => (b.psf as number) - (a.psf as number));
+const ranked = [...active].sort((a, b) => at(b).psf - at(a).psf);
 const fmt = new Intl.NumberFormat("en-AE");
 /* The dearest community is a 22-sale island, which is a poor thing to open on.
    Default to the busiest market instead. */
-const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
+const top = [...ranked].sort((a, b) => at(b).sales - at(a).sales)[0];
 ---
 
 <Base
@@ -66,15 +70,12 @@ const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
          that used to explain each of them lives in the labels now. -->
     <div class="filters">
       <div class="filter">
-        <span class="filter-label" id="f-budget">Budget</span>
-        <div class="filter-set" role="group" aria-labelledby="f-budget">
-          <button type="button" class="chip budget-btn" data-budget="0" aria-pressed="true">Any</button>
-          <button type="button" class="chip budget-btn" data-budget="1" aria-pressed="false">1m</button>
-          <button type="button" class="chip budget-btn" data-budget="2" aria-pressed="false">2m</button>
-          <button type="button" class="chip budget-btn" data-budget="3" aria-pressed="false">3m</button>
-          <button type="button" class="chip budget-btn" data-budget="4" aria-pressed="false">5m</button>
-          <button type="button" class="chip budget-btn" data-budget="5" aria-pressed="false">8m</button>
-          <button type="button" class="chip budget-btn" data-budget="6" aria-pressed="false">15m</button>
+        <span class="filter-label" id="f-period">Period</span>
+        <div class="filter-set" role="group" aria-labelledby="f-period">
+          <button type="button" class="chip period-btn" data-period="12m" aria-pressed="true">12 months</button>
+          <button type="button" class="chip period-btn" data-period="3y" aria-pressed="false">3 years</button>
+          <button type="button" class="chip period-btn" data-period="5y" aria-pressed="false">5 years</button>
+          <button type="button" class="chip period-btn" data-period="10y" aria-pressed="false">10 years</button>
         </div>
       </div>
 
@@ -112,18 +113,22 @@ const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
       </div>
 
       <!-- Leads with the sentence a buyer could repeat to someone, not a ratio. -->
-      <div id="p-budget" class="budget-answer" hidden>
-        <p class="meta" style="margin:0;">At your budget, here</p>
-        <p id="p-budget-line" style="margin:var(--space-2xs) 0 0; font-weight:500; font-size:var(--step-1);"></p>
-        <p class="meta" id="p-budget-count" style="margin:var(--space-2xs) 0 0;"></p>
+      <div id="p-typical" class="budget-answer">
+        <p class="meta" style="margin:0;" id="p-typical-head">Typical sale, last 12 months</p>
+        <p id="p-typical-line" style="margin:var(--space-2xs) 0 0; font-weight:500; font-size:var(--step-1);">
+          {at(top).typical ? `${at(top).typical.rooms}, about ${fmt.format(at(top).typical.sqft)} sqft` : "Too few sales to say"}
+        </p>
+        <p class="meta" id="p-typical-price" style="margin:var(--space-2xs) 0 0;">
+          {at(top).typical ? `Median ${new Intl.NumberFormat("en-AE",{style:"currency",currency:"AED",maximumFractionDigits:0,notation:"compact"}).format(at(top).typical.price)}, from ${fmt.format(at(top).typical.n)} sales` : ""}
+        </p>
       </div>
 
       <!-- Liquidity next. It is what quietly ruins an off-plan investment and
            no property site shows it. -->
       <div class="rows" style="margin-top: var(--space-s);">
-        <div class="row"><span class="row-label">Sales in the last year
+        <div class="row"><span class="row-label" id="p-sales-label">Sales in the period
           <span class="row-note" id="p-liquidity-note">How easily you could sell again</span></span>
-          <span class="row-value" id="p-sales12">{fmt.format(top.sales12)}</span></div>
+          <span class="row-value" id="p-sales12">{fmt.format(at(top).sales)}</span></div>
       </div>
 
       <section class="panel-block">
@@ -140,15 +145,15 @@ const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
         <summary class="meta">Market detail</summary>
         <div class="rows" style="margin-top: var(--space-2xs);">
           <div class="row"><span class="row-label">Median AED/sqft</span>
-            <span class="row-value" id="p-psf">{fmt.format(top.psf as number)}</span></div>
+            <span class="row-value" id="p-psf">{fmt.format(at(top).psf)}</span></div>
           <div class="row"><span class="row-label">Price growth
-            <span class="row-note">Today against the 2020 to 2022 average</span></span>
-            <span class="row-value" id="p-growth">{top.growth !== null ? `${top.growth > 0 ? "+" : ""}${top.growth}%` : "n/a"}</span></div>
+            <span class="row-note" id="p-growth-note">Against the twelve months before</span></span>
+            <span class="row-value" id="p-growth">{at(top).growth !== null ? `${at(top).growth > 0 ? "+" : ""}${at(top).growth}%` : "n/a"}</span></div>
           <div class="row"><span class="row-label">Off-plan share</span>
-            <span class="row-value" id="p-offplan">{top.offplan !== null ? `${top.offplan}%` : "n/a"}</span></div>
+            <span class="row-value" id="p-offplan">{at(top).offplan}%</span></div>
           <div class="row"><span class="row-label">Financed share
             <span class="row-note">Mortgages per 100 sales</span></span>
-            <span class="row-value" id="p-financed">{top.financed !== null ? `${top.financed}%` : "n/a"}</span></div>
+            <span class="row-value" id="p-financed">{at(top).financed}%</span></div>
         </div>
       </details>
     </aside>
@@ -191,8 +196,9 @@ const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
     <section style="margin-top: var(--space-xl);">
       <h2>Every community with enough sales to report</h2>
       <p class="meta" style="margin-top: var(--space-2xs); max-width: 62ch;">
-        {ranked.length} of {cs.length}. The rest recorded fewer than 40 sales
-        since 2023, which is too few to publish a median from.
+        {ranked.length} of {cs.length} over the last twelve months. The rest
+        recorded too few sales to publish a median from. Choose a longer period
+        above and more of the map fills in.
       </p>
       <div style="overflow-x:auto; margin-top: var(--space-m);">
         <table style="width:100%; border-collapse:collapse; font-size: var(--step--1);">
@@ -212,10 +218,10 @@ const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
                   {named(c)}
                   {c.common && <span class="row-note">{c.name}</span>}
                 </td>
-                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{fmt.format(c.psf as number)}</td>
-                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{c.growth !== null ? `${c.growth > 0 ? "+" : ""}${c.growth}%` : "n/a"}</td>
-                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{fmt.format(c.sales12)}</td>
-                <td class="num" style="text-align:right; padding:0.45rem 0 0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{c.offplan !== null ? `${c.offplan}%` : "n/a"}</td>
+                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{fmt.format(at(c).psf)}</td>
+                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{at(c).growth !== null ? `${at(c).growth > 0 ? "+" : ""}${at(c).growth}%` : "n/a"}</td>
+                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{fmt.format(at(c).sales)}</td>
+                <td class="num" style="text-align:right; padding:0.45rem 0 0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{at(c).offplan}%</td>
               </tr>
             ))}
           </tbody>
