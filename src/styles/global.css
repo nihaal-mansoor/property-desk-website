@@ -66,6 +66,9 @@
   --leading-body:  1.618;
   --leading-tight: 1.1;
 
+  /* One width for the whole site. The map used to run past it edge to edge,
+     which on a wide monitor made the page look like two different sites. */
+  --shell: 1440px;
   --measure: 34rem;
   --gutter: clamp(1rem, 4vw, 2rem);
 
@@ -183,7 +186,7 @@
 }
 
 @layer components {
-  .shell { max-width: 62rem; margin-inline: auto; padding-inline: var(--gutter); }
+  .shell { max-width: var(--shell); margin-inline: auto; padding-inline: var(--gutter); }
   .col   { max-width: var(--measure); margin-inline: auto; padding-inline: var(--gutter); }
 
   .meta {
@@ -262,15 +265,22 @@
   /* The map runs edge to edge. It is the product, and the reading shell would
      only shrink it. The panel and legend float over it rather than taking width
      away from it. */
-  .map-full { position: relative; width: 100%; margin-block: var(--space-m); }
+  /* Bounded like everything else, not full bleed. */
+  .map-full {
+    position: relative;
+    max-width: var(--shell);
+    margin: var(--space-m) auto 0;
+    padding-inline: var(--gutter);
+  }
   .map-canvas {
     width: 100%;
-    height: clamp(26rem, 72vh, 46rem);
+    height: clamp(28rem, 70vh, 44rem);
     background: var(--sunk);
+    border: 1px solid var(--rule);
   }
 
   .map-panel {
-    position: absolute; top: var(--space-s); left: var(--space-s); z-index: 2;
+    position: absolute; top: var(--space-s); left: calc(var(--gutter) + var(--space-s)); z-index: 2;
     width: min(19rem, calc(100% - 2 * var(--space-s)));
     padding: var(--space-s);
     background: var(--paper);
@@ -283,7 +293,7 @@
   /* Bottom right, clear of the panel on the left. Lifted above MapLibre's own
      attribution strip, which also lives in this corner. */
   .map-legend {
-    position: absolute; bottom: calc(var(--space-s) + 1.4rem); right: var(--space-s); z-index: 2;
+    position: absolute; bottom: calc(var(--space-s) + 1.4rem); right: calc(var(--gutter) + var(--space-s)); z-index: 2;
     width: min(22rem, calc(100% - 2 * var(--space-s)));
     padding: var(--space-xs) var(--space-s);
     background: var(--paper);
@@ -312,21 +322,58 @@
   .maplibregl-ctrl-group button { border-radius: 0 !important; }
   .maplibregl-ctrl-attrib { font-family: var(--font-sans); font-size: 11px; }
 
-  .metrics { display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
-  .metric {
-    font-family: var(--font-sans); font-size: var(--step--1);
-    padding: 0.4rem 0.75rem; border: 1px solid var(--rule-2);
-    border-radius: var(--radius); background: var(--surface);
-    color: var(--ink-2); cursor: pointer;
-  }
-  .metric:hover { background: var(--sunk); }
-  .metric[aria-pressed="true"] {
-    background: var(--signal); border-color: var(--signal); color: var(--signal-ink); font-weight: 500;
-  }
 
   /* Recency, stated where it cannot be missed. The old wording said when the
      file was compiled, which tells a reader nothing about how current the
      record behind it is. */
+  .lede {
+    max-width: 62ch; margin: var(--space-s) 0 0;
+    font-size: var(--step-0); color: var(--ink-2);
+  }
+
+  /* The filter bar. One rule above the map, two labelled groups, nothing else
+     between the headline and the thing people came for. */
+  .filters {
+    display: flex; flex-wrap: wrap; gap: var(--space-m) var(--space-l);
+    margin-top: var(--space-m);
+    padding: var(--space-s) 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .filter { display: flex; align-items: center; gap: var(--space-s); flex-wrap: wrap; }
+  .filter-label {
+    font-family: var(--font-sans); font-size: var(--step--1);
+    font-weight: 600; color: var(--ink); white-space: nowrap;
+  }
+  .filter-set { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .chip {
+    font-family: var(--font-sans); font-size: var(--step--1);
+    padding: 0.36rem 0.7rem;
+    border: 1px solid var(--rule-2); border-radius: var(--radius);
+    background: var(--surface); color: var(--ink-2); cursor: pointer;
+    white-space: nowrap;
+  }
+  .chip:hover { background: var(--sunk); }
+  .chip[aria-pressed="true"] {
+    background: var(--signal); border-color: var(--signal);
+    color: var(--signal-ink); font-weight: 500;
+  }
+  .budget-btn { font-family: var(--font-mono); min-width: 3rem; }
+
+  /* On a phone the two groups wrapped to five rows and pushed the map back
+     below the fold, which is the thing the filter bar exists to prevent. Each
+     group keeps to one line and scrolls in its own box instead. */
+  @media (max-width: 60rem) {
+    .filters { display: grid; gap: var(--space-s); }
+    .filter { display: grid; gap: var(--space-2xs); }
+    .filter-set {
+      flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+      margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter);
+    }
+    .filter-set::-webkit-scrollbar { display: none; }
+    .filter-set > .chip { flex: none; }
+  }
+
   .freshness {
     display: flex; align-items: baseline; gap: 0.5rem;
     margin: var(--space-s) 0 0;
@@ -337,7 +384,6 @@
     border-radius: 999px; transform: translateY(-1px);
   }
 
-  .budget { margin-top: var(--space-m); }
   .budget-btn { min-width: 3.4rem; font-family: var(--font-mono); }
 
   .budget-answer {

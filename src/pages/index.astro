@@ -54,46 +54,41 @@ const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
   description="Every Dubai community, coloured by what property there actually sold for. Built from 1.78 million registered Land Department transactions."
   path="/"
 >
-  <div class="shell" style="padding-block: var(--space-l) var(--space-xl);">
+  <div class="shell" style="padding-block: var(--space-l) 0;">
     <h1>Where the money actually goes in Dubai</h1>
-    <p class="meta" style="margin-top: var(--space-s); font-size: var(--step-0); max-width: 62ch;">
-      {cs.length} communities, coloured by what actually sold rather than by
-      what anyone is asking. Every figure below is the registered record.
-    </p>
-    <p class="freshness">
-      <span class="dot" aria-hidden="true"></span>
-      Registered sales up to <strong>{new Date((map as any).latest).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</strong>.
-      Rates and shares use the last twelve months.
+    <p class="lede">
+      Every community, coloured by what actually sold. Registered sales to{" "}
+      <strong>{new Date((map as any).latest).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</strong>,
+      never an asking price.
     </p>
 
-    <div class="budget" role="group" aria-labelledby="budget-h">
-      <p id="budget-h" class="meta" style="margin:0 0 var(--space-2xs);">
-        What are you looking to spend?
-      </p>
-      <div class="metrics">
-        <button type="button" class="metric budget-btn" data-budget="0" aria-pressed="true">Any</button>
-        <button type="button" class="metric budget-btn" data-budget="1" aria-pressed="false">1m</button>
-        <button type="button" class="metric budget-btn" data-budget="2" aria-pressed="false">2m</button>
-        <button type="button" class="metric budget-btn" data-budget="3" aria-pressed="false">3m</button>
-        <button type="button" class="metric budget-btn" data-budget="4" aria-pressed="false">5m</button>
-        <button type="button" class="metric budget-btn" data-budget="5" aria-pressed="false">8m</button>
-        <button type="button" class="metric budget-btn" data-budget="6" aria-pressed="false">15m</button>
+    <!-- One bar, two controls, immediately above the map it drives. The copy
+         that used to explain each of them lives in the labels now. -->
+    <div class="filters">
+      <div class="filter">
+        <span class="filter-label" id="f-budget">Budget</span>
+        <div class="filter-set" role="group" aria-labelledby="f-budget">
+          <button type="button" class="chip budget-btn" data-budget="0" aria-pressed="true">Any</button>
+          <button type="button" class="chip budget-btn" data-budget="1" aria-pressed="false">1m</button>
+          <button type="button" class="chip budget-btn" data-budget="2" aria-pressed="false">2m</button>
+          <button type="button" class="chip budget-btn" data-budget="3" aria-pressed="false">3m</button>
+          <button type="button" class="chip budget-btn" data-budget="4" aria-pressed="false">5m</button>
+          <button type="button" class="chip budget-btn" data-budget="5" aria-pressed="false">8m</button>
+          <button type="button" class="chip budget-btn" data-budget="6" aria-pressed="false">15m</button>
+        </div>
       </div>
-      <p class="meta" id="budget-note" style="margin-top: var(--space-2xs);">
-        Pick a budget and the map shows where property at that price actually
-        changed hands in the last year. Somewhere with three sales in your range
-        is not a market you can buy into.
-      </p>
+
+      <div class="filter">
+        <span class="filter-label" id="f-metric">Colour by</span>
+        <div class="filter-set" role="group" aria-labelledby="f-metric">
+          <button type="button" class="chip metric" data-metric="psf" aria-pressed="true">Price per sqft</button>
+          <button type="button" class="chip metric" data-metric="growth" aria-pressed="false">Growth</button>
+          <button type="button" class="chip metric" data-metric="sales12" aria-pressed="false">Sales volume</button>
+          <button type="button" class="chip metric" data-metric="offplan" aria-pressed="false">Off-plan</button>
+          <button type="button" class="chip metric" data-metric="financed" aria-pressed="false">Financed</button>
+        </div>
+      </div>
     </div>
-
-    <nav class="metrics" aria-label="Colour the map by" style="margin-top: var(--space-m);">
-      <button type="button" class="metric" data-metric="psf" aria-pressed="true">Price per sqft</button>
-      <button type="button" class="metric" data-metric="growth" aria-pressed="false">Price growth</button>
-      <button type="button" class="metric" data-metric="sales12" aria-pressed="false">Sales, last 12 months</button>
-      <button type="button" class="metric" data-metric="offplan" aria-pressed="false">Off-plan share</button>
-      <button type="button" class="metric" data-metric="financed" aria-pressed="false">Financed share</button>
-    </nav>
-
   </div>
 
   <!-- Full width, edge to edge. The map is the product; the shell would only

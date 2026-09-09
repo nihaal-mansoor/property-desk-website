@@ -382,21 +382,21 @@ const JS = String.raw`
       if (cb) { cb.disabled = false; cb.textContent = "Compare"; }
     });
 
-    document.querySelectorAll(".metric[data-metric]").forEach((btn) => {
+    document.querySelectorAll("[data-metric]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".metric[data-metric]").forEach((b) =>
+        document.querySelectorAll("[data-metric]").forEach((b) =>
           b.setAttribute("aria-pressed", String(b === btn)));
         /* Choosing a metric means you are no longer asking the budget question. */
         budgetIdx = 0;
-        document.querySelectorAll(".budget-btn").forEach((b, i) =>
+        document.querySelectorAll("[data-budget]").forEach((b, i) =>
           b.setAttribute("aria-pressed", String(i === 0)));
         paint(btn.dataset.metric);
       });
     });
 
-    document.querySelectorAll(".budget-btn").forEach((btn) => {
+    document.querySelectorAll("[data-budget]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".budget-btn").forEach((b) =>
+        document.querySelectorAll("[data-budget]").forEach((b) =>
           b.setAttribute("aria-pressed", String(b === btn)));
         budgetIdx = Number(btn.dataset.budget);
         paint(metric);
