@@ -57,14 +57,38 @@ const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
   <div class="shell" style="padding-block: var(--space-l) var(--space-xl);">
     <h1>Where the money actually goes in Dubai</h1>
     <p class="meta" style="margin-top: var(--space-s); font-size: var(--step-0); max-width: 62ch;">
-      {cs.length} communities, coloured by the registered record rather than by
-      asking prices. Built from 1.78 million Land Department transactions.
-      Compiled {map.generated}.
+      {cs.length} communities, coloured by what actually sold rather than by
+      what anyone is asking. Every figure below is the registered record.
     </p>
+    <p class="freshness">
+      <span class="dot" aria-hidden="true"></span>
+      Registered sales up to <strong>{new Date((map as any).latest).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</strong>.
+      Rates and shares use the last twelve months.
+    </p>
+
+    <div class="budget" role="group" aria-labelledby="budget-h">
+      <p id="budget-h" class="meta" style="margin:0 0 var(--space-2xs);">
+        What are you looking to spend?
+      </p>
+      <div class="metrics">
+        <button type="button" class="metric budget-btn" data-budget="0" aria-pressed="true">Any</button>
+        <button type="button" class="metric budget-btn" data-budget="1" aria-pressed="false">1m</button>
+        <button type="button" class="metric budget-btn" data-budget="2" aria-pressed="false">2m</button>
+        <button type="button" class="metric budget-btn" data-budget="3" aria-pressed="false">3m</button>
+        <button type="button" class="metric budget-btn" data-budget="4" aria-pressed="false">5m</button>
+        <button type="button" class="metric budget-btn" data-budget="5" aria-pressed="false">8m</button>
+        <button type="button" class="metric budget-btn" data-budget="6" aria-pressed="false">15m</button>
+      </div>
+      <p class="meta" id="budget-note" style="margin-top: var(--space-2xs);">
+        Pick a budget and the map shows where property at that price actually
+        changed hands in the last year. Somewhere with three sales in your range
+        is not a market you can buy into.
+      </p>
+    </div>
 
     <nav class="metrics" aria-label="Colour the map by" style="margin-top: var(--space-m);">
       <button type="button" class="metric" data-metric="psf" aria-pressed="true">Price per sqft</button>
-      <button type="button" class="metric" data-metric="growth" aria-pressed="false">Growth since 2020&ndash;22</button>
+      <button type="button" class="metric" data-metric="growth" aria-pressed="false">Price growth</button>
       <button type="button" class="metric" data-metric="sales12" aria-pressed="false">Sales, last 12 months</button>
       <button type="button" class="metric" data-metric="offplan" aria-pressed="false">Off-plan share</button>
       <button type="button" class="metric" data-metric="financed" aria-pressed="false">Financed share</button>
@@ -82,19 +106,36 @@ const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
       <p class="meta" style="margin:0;">Selected</p>
       <h2 id="p-name" style="font-size: var(--step-2); margin-top: var(--space-2xs);">{named(top)}</h2>
       <p class="meta" id="p-official" style="margin-top: var(--space-2xs);">{top.name}</p>
+      <div id="p-budget" class="budget-answer" hidden>
+        <p class="meta" style="margin:0;">At your budget, here</p>
+        <p id="p-budget-line" style="margin:var(--space-2xs) 0 0; font-weight:500;"></p>
+        <p class="meta" id="p-budget-count" style="margin:var(--space-2xs) 0 0;"></p>
+      </div>
+
       <div class="rows" style="margin-top: var(--space-s);">
         <div class="row"><span class="row-label">Median AED/sqft</span>
           <span class="row-value" id="p-psf">{fmt.format(top.psf as number)}</span></div>
-        <div class="row"><span class="row-label">Change vs 2020&ndash;22</span>
-          <span class="row-value" id="p-growth">{top.growth !== null ? `${top.growth > 0 ? "+" : ""}${top.growth}%` : "—"}</span></div>
+        <div class="row"><span class="row-label">Price growth
+          <span class="row-note">Today against the 2020 to 2022 average</span></span>
+          <span class="row-value" id="p-growth">{top.growth !== null ? `${top.growth > 0 ? "+" : ""}${top.growth}%` : "n/a"}</span></div>
         <div class="row"><span class="row-label">Sales, last 12 months</span>
           <span class="row-value" id="p-sales12">{fmt.format(top.sales12)}</span></div>
         <div class="row"><span class="row-label">Off-plan share</span>
-          <span class="row-value" id="p-offplan">{top.offplan !== null ? `${top.offplan}%` : "—"}</span></div>
+          <span class="row-value" id="p-offplan">{top.offplan !== null ? `${top.offplan}%` : "n/a"}</span></div>
         <div class="row"><span class="row-label">Financed share
           <span class="row-note">Mortgages per 100 sales</span></span>
-          <span class="row-value" id="p-financed">{top.financed !== null ? `${top.financed}%` : "—"}</span></div>
+          <span class="row-value" id="p-financed">{top.financed !== null ? `${top.financed}%` : "n/a"}</span></div>
       </div>
+
+      <details class="panel-more">
+        <summary class="meta">Latest sales here</summary>
+        <div id="p-recent" class="rows" style="margin-top: var(--space-2xs);"></div>
+      </details>
+
+      <details class="panel-more">
+        <summary class="meta">Most active projects</summary>
+        <div id="p-projects" class="rows" style="margin-top: var(--space-2xs);"></div>
+      </details>
     </aside>
 
     <div class="map-legend">
@@ -142,9 +183,9 @@ const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
                   {c.common && <span class="row-note">{c.name}</span>}
                 </td>
                 <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{fmt.format(c.psf as number)}</td>
-                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{c.growth !== null ? `${c.growth > 0 ? "+" : ""}${c.growth}%` : "—"}</td>
+                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{c.growth !== null ? `${c.growth > 0 ? "+" : ""}${c.growth}%` : "n/a"}</td>
                 <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{fmt.format(c.sales12)}</td>
-                <td class="num" style="text-align:right; padding:0.45rem 0 0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{c.offplan !== null ? `${c.offplan}%` : "—"}</td>
+                <td class="num" style="text-align:right; padding:0.45rem 0 0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{c.offplan !== null ? `${c.offplan}%` : "n/a"}</td>
               </tr>
             ))}
           </tbody>

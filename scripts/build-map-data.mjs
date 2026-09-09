@@ -103,10 +103,16 @@ const lkp = new Map();
 /* ---------- transactions ---------- */
 const now = new Date("2026-09-04");
 const cut12 = new Date(now); cut12.setFullYear(now.getFullYear() - 1);
+let latest = "";
 const stats = new Map();
 const get = (m) => {
   if (!stats.has(m)) {
-    stats.set(m, { psf: [], psfOld: [], sales: 0, sales12: 0, offplan: 0, mortgages: 0 });
+    stats.set(m, {
+      psf: [], psfOld: [], sales: 0, sales12: 0, offplan: 0, mortgages: 0,
+      /* Last twelve months only. An investor is asking what the market is doing
+         now, not what it did in 2021. */
+      recent: [], byRooms: new Map(), projects: new Map(), prices12: [],
+    });
   }
   return stats.get(m);
 };
@@ -135,8 +141,37 @@ for (const file of readdirSync(TX).filter((f) => f.endsWith(".csv"))) {
     if (group === "Mortgages") { s.mortgages++; continue; }
     if (group !== "Sales") continue;
     s.sales++;
-    if (new Date(date) >= cut12) s.sales12++;
-    if (cells[ix["reg_type_en"]] === "Off-Plan Properties") s.offplan++;
+    const offplan = cells[ix["reg_type_en"]] === "Off-Plan Properties";
+    if (offplan) s.offplan++;
+
+    if (new Date(date) >= cut12) {
+      s.sales12++;
+      const worth = Number(cells[ix["actual_worth"]]);
+      const sqm = Number(cells[ix["procedure_area"]]);
+      const rooms = (cells[ix["rooms_en"]] ?? "").trim();
+      const project = (cells[ix["project_name_en"]] ?? "").trim();
+      const sqft = sqm > 0 ? Math.round(sqm * 10.7639) : null;
+
+      if (worth > 0) s.prices12.push(worth);
+
+      /* Enough to show the last handful without carrying a year of rows into
+         the browser. Kept sorted by date, trimmed as we go. */
+      if (worth > 0 && sqft) {
+        s.recent.push({ d: date.slice(0, 10), r: rooms || null, ft: sqft, w: Math.round(worth), o: offplan ? 1 : 0 });
+        if (s.recent.length > 400) {
+          s.recent.sort((a, b) => (a.d < b.d ? 1 : -1));
+          s.recent.length = 40;
+        }
+      }
+      /* What a given budget actually buys here, by bedroom count. */
+      if (rooms && worth > 0 && sqft) {
+        if (!s.byRooms.has(rooms)) s.byRooms.set(rooms, { w: [], ft: [] });
+        const b = s.byRooms.get(rooms);
+        b.w.push(worth); b.ft.push(sqft);
+      }
+      if (project) s.projects.set(project, (s.projects.get(project) ?? 0) + 1);
+    }
+    if (date > latest) latest = date.slice(0, 10);
     const psm = Number(cells[ix["meter_sale_price"]]);
     if (psm > 1000 && psm < 200000) {
       const year = date.slice(0, 4);
@@ -192,6 +227,24 @@ for (const [num, poly] of polys) {
   if (maxLon > 55.75) continue;
   const s = stats.get(num);
   const psf = median(s?.psf ?? []);
+  const prices = (s?.prices12 ?? []).sort((a, b) => a - b);
+  /* How many of the last year's sales landed at or under each budget. This is
+     the answer to "can I actually buy here", and it doubles as a liquidity
+     signal: a place with three sales in your range is not a market. */
+  const BUDGETS = [1e6, 2e6, 3e6, 5e6, 8e6, 15e6];
+  const reach = BUDGETS.map((b) => prices.filter((p) => p <= b).length);
+  const rooms = [...(s?.byRooms ?? new Map())]
+    .map(([label, v]) => ({
+      rooms: label,
+      n: v.w.length,
+      price: Math.round(median(v.w)),
+      sqft: Math.round(median(v.ft)),
+    }))
+    .filter((r) => r.n >= 5)
+    .sort((a, b) => a.price - b.price);
+  const projects = [...(s?.projects ?? new Map())]
+    .sort((a, b) => b[1] - a[1]).slice(0, 6)
+    .map(([name, n]) => ({ name, n }));
   const psfOld = median(s?.psfOld ?? []);
   const enough = (s?.psf.length ?? 0) >= 40;
   communities.push({
@@ -205,6 +258,10 @@ for (const [num, poly] of polys) {
     sales12: s?.sales12 ?? 0,
     offplan: s?.sales ? Math.round((s.offplan / s.sales) * 100) : null,
     financed: s?.sales ? Math.round((s.mortgages / s.sales) * 100) : null,
+    reach,
+    rooms,
+    projects,
+    recent: (s?.recent ?? []).sort((a, b) => (a.d < b.d ? 1 : -1)).slice(0, 8),
   });
 }
 
@@ -219,16 +276,32 @@ const geo = {
       id: c.id, name: c.common ?? titleCase(c.name), official: c.name,
       psf: c.psf, growth: c.growth, sales12: c.sales12,
       offplan: c.offplan, financed: c.financed,
+      // One count per budget band, so the map can recolour without a fetch.
+      r0: c.reach?.[0] ?? null, r1: c.reach?.[1] ?? null, r2: c.reach?.[2] ?? null,
+      r3: c.reach?.[3] ?? null, r4: c.reach?.[4] ?? null, r5: c.reach?.[5] ?? null,
     },
     geometry: { type: "Polygon", coordinates: c.rings },
   })),
 };
 writeFileSync("public/communities.geojson", JSON.stringify(geo));
+
+/* Panel detail lives in its own file, fetched once. Folding it into the GeoJSON
+   would push the geometry every reader downloads past a quarter of a megabyte
+   for data most of them will never open. */
+const detail = Object.fromEntries(communities.filter((c) => c.psf !== null).map((c) => [c.id, {
+  reach: c.reach, rooms: c.rooms, projects: c.projects, recent: c.recent,
+}]));
+writeFileSync("public/areas.json", JSON.stringify({ latest, budgets: [1e6, 2e6, 3e6, 5e6, 8e6, 15e6], detail }));
+console.log(`public/areas.json           ${(readFileSync("public/areas.json").length/1024).toFixed(0)} KB`);
 console.log(`public/communities.geojson  ${(readFileSync("public/communities.geojson").length/1024).toFixed(0)} KB`);
 
 const withData = communities.filter((c) => c.psf !== null).length;
 writeFileSync(OUT, JSON.stringify({
   generated: new Date().toISOString().slice(0, 10),
+  /* The date of the newest transaction, which is what a reader actually wants
+     to know. "Compiled today" says nothing about how current the record is. */
+  latest,
+  budgets: [1e6, 2e6, 3e6, 5e6, 8e6, 15e6],
   source: "Dubai Land Department registered transactions; Dubai Municipality community boundaries",
   communities,
 }));

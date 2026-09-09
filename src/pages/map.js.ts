@@ -42,6 +42,11 @@ const JS = String.raw`
     };
 
     let features = [];
+  let detail = {};
+  let budgets = [];
+  let budgetIdx = 0;      // 0 means "any"
+  let metric = "psf";
+  const AED = new Intl.NumberFormat("en-AE", { style: "currency", currency: "AED", maximumFractionDigits: 0, notation: "compact" });
 
     const map = new Map({
       container: "map",
@@ -70,31 +75,97 @@ const JS = String.raw`
       return out;
     }
 
-    function paint(metric) {
-      const expr = ramp(metric);
+    function paint(m) {
+      metric = m;
+      /* With a budget chosen the map answers a different question: not what a
+         place costs, but how much of it actually traded at your price. */
+      const key = budgetIdx > 0 ? "r" + (budgetIdx - 1) : m;
+      const expr = ramp(key);
       if (!expr) return;
       map.setPaintProperty("communities", "fill-color",
-        ["case", ["==", ["get", metric], null], NODATA, expr]);
+        ["case", ["==", ["get", key], null], NODATA, expr]);
       const n = document.getElementById("legend-note");
-      if (n) n.textContent = LABEL[metric] + ". Grey: too few sales to report.";
+      if (n) {
+        n.textContent = budgetIdx > 0
+          ? "Sales at or under " + AED.format(budgets[budgetIdx - 1]) + " in the last 12 months. Darker means more of the market is within reach."
+          : LABEL[m] + ". Grey: too few sales to report.";
+      }
+    }
+
+    function rowsHtml(rows) {
+      return rows.map(([a, b]) =>
+        '<div class="row"><span class="row-label">' + a + '</span>' +
+        '<span class="row-value">' + b + '</span></div>').join("");
+    }
+
+    function fillDetail(id) {
+      const d = detail[id];
+      const recent = document.getElementById("p-recent");
+      const projects = document.getElementById("p-projects");
+      const answer = document.getElementById("p-budget");
+
+      if (!d) {
+        if (recent) recent.innerHTML = '<p class="meta" style="margin:0">Too few sales here to report.</p>';
+        if (projects) projects.innerHTML = "";
+        if (answer) answer.hidden = true;
+        return;
+      }
+
+      if (recent) {
+        recent.innerHTML = rowsHtml(d.recent.map((t) => [
+          t.d.slice(8) + "/" + t.d.slice(5, 7) + " &middot; " + (t.r || "Not stated") +
+            '<span class="row-note">' + t.ft.toLocaleString("en-AE") + " sqft" +
+            (t.o ? " &middot; off-plan" : "") + "</span>",
+          AED.format(t.w),
+        ]));
+      }
+      if (projects) {
+        projects.innerHTML = d.projects.length
+          ? rowsHtml(d.projects.map((p) => [p.name, p.n + " sales"]))
+          : '<p class="meta" style="margin:0">No named project activity.</p>';
+      }
+
+      /* What the chosen budget actually reaches here. */
+      if (answer) {
+        if (budgetIdx === 0) { answer.hidden = true; return; }
+        const budget = budgets[budgetIdx - 1];
+        const within = d.rooms.filter((r) => r.price <= budget);
+        const best = within[within.length - 1];
+        const n = d.reach[budgetIdx - 1] ?? 0;
+        answer.hidden = false;
+        document.getElementById("p-budget-line").innerHTML = best
+          ? best.rooms + " &middot; about " + best.sqft.toLocaleString("en-AE") + " sqft"
+          : "Nothing typically trades at this budget here.";
+        document.getElementById("p-budget-count").textContent = n
+          ? n.toLocaleString("en-AE") + " sales at or under " + AED.format(budget) + " in the last 12 months."
+          : "No sales at or under " + AED.format(budget) + " in the last 12 months.";
+      }
     }
 
     function select(p) {
       const set = (id, v) => {
         const n = document.getElementById(id); if (n) n.textContent = v;
       };
+      const nameEl = document.getElementById("p-name");
+      if (nameEl) nameEl.dataset.id = p.id;
       set("p-name", p.name);
       set("p-official", p.official);
-      set("p-psf", p.psf != null ? fmt.format(p.psf) : "—");
-      set("p-growth", p.growth != null ? (p.growth > 0 ? "+" : "") + p.growth + "%" : "—");
+      set("p-psf", p.psf != null ? fmt.format(p.psf) : "n/a");
+      set("p-growth", p.growth != null ? (p.growth > 0 ? "+" : "") + p.growth + "%" : "n/a");
       set("p-sales12", fmt.format(p.sales12 ?? 0));
-      set("p-offplan", p.offplan != null ? p.offplan + "%" : "—");
-      set("p-financed", p.financed != null ? p.financed + "%" : "—");
+      set("p-offplan", p.offplan != null ? p.offplan + "%" : "n/a");
+      set("p-financed", p.financed != null ? p.financed + "%" : "n/a");
+      fillDetail(p.id);
     }
 
     map.on("load", async () => {
-      const geo = await (await fetch("/communities.geojson")).json();
+      const [geo, areas] = await Promise.all([
+        fetch("/communities.geojson").then((r) => r.json()),
+        fetch("/areas.json").then((r) => r.json()),
+      ]);
       features = geo.features;
+      detail = areas.detail;
+      budgets = areas.budgets;
       map.addSource("communities", { type: "geojson", data: geo, promoteId: "id" });
 
       const before = firstSymbol();
@@ -150,11 +221,26 @@ const JS = String.raw`
       });
     });
 
-    document.querySelectorAll(".metric").forEach((btn) => {
+    document.querySelectorAll(".metric[data-metric]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".metric").forEach((b) =>
+        document.querySelectorAll(".metric[data-metric]").forEach((b) =>
           b.setAttribute("aria-pressed", String(b === btn)));
+        /* Choosing a metric means you are no longer asking the budget question. */
+        budgetIdx = 0;
+        document.querySelectorAll(".budget-btn").forEach((b, i) =>
+          b.setAttribute("aria-pressed", String(i === 0)));
         paint(btn.dataset.metric);
+      });
+    });
+
+    document.querySelectorAll(".budget-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".budget-btn").forEach((b) =>
+          b.setAttribute("aria-pressed", String(b === btn)));
+        budgetIdx = Number(btn.dataset.budget);
+        paint(metric);
+        const sel = document.getElementById("p-name")?.dataset.id;
+        if (sel) fillDetail(sel);
       });
     });
   }

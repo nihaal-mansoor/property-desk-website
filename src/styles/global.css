@@ -314,6 +314,32 @@
     background: var(--signal); border-color: var(--signal); color: var(--signal-ink); font-weight: 500;
   }
 
+  /* Recency, stated where it cannot be missed. The old wording said when the
+     file was compiled, which tells a reader nothing about how current the
+     record behind it is. */
+  .freshness {
+    display: flex; align-items: baseline; gap: 0.5rem;
+    margin: var(--space-s) 0 0;
+    font-family: var(--font-sans); font-size: var(--step--1); color: var(--ink-2);
+  }
+  .freshness .dot {
+    width: 7px; height: 7px; flex: none; background: var(--signal);
+    border-radius: 999px; transform: translateY(-1px);
+  }
+
+  .budget { margin-top: var(--space-m); }
+  .budget-btn { min-width: 3.4rem; font-family: var(--font-mono); }
+
+  .budget-answer {
+    margin-top: var(--space-s); padding: var(--space-xs) var(--space-s);
+    background: var(--signal-dim); border-left: 2px solid var(--signal);
+  }
+
+  .panel-more { margin-top: var(--space-s); border-top: 1px solid var(--rule); padding-top: var(--space-xs); }
+  .panel-more > summary { cursor: pointer; }
+  .panel-more .row { padding: 0.4rem 0; }
+  .panel-more .row-value { font-size: var(--step--1); }
+
   .legend { display: flex; margin-top: var(--space-s); }
   .swatch { flex: 1 1 0; height: 10px; }
 
