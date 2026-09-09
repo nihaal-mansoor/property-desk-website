@@ -2,6 +2,7 @@
 import "../styles/global.css";
 import { disclaimer } from "@uaeprop/site-kit";
 import Analytics from "@vercel/analytics/astro";
+import SpeedInsights from "@vercel/speed-insights/astro";
 import config from "../../site.config";
 
 interface Props {
@@ -108,5 +109,13 @@ const fullTitle = title === config.brand ? title : `${title} · ${config.brand}`
       origins are already in the CSP (§4.3) via site-kit's `analytics: true`.
     -->
     <Analytics />
+    <!--
+      Speed Insights reports real-user Core Web Vitals, which is the only way
+      to know whether the §4.1 budget holds on the phones people actually use
+      rather than on an emulated profile. Same shape as Analytics above:
+      cookieless, external file, and its beacon host
+      vitals.vercel-insights.com is already in the CSP connect-src.
+    -->
+    <SpeedInsights />
   </body>
 </html>

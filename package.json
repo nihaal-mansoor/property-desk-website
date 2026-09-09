@@ -21,6 +21,7 @@
     "@iconify-json/lucide": "^1.2.129",
     "@uaeprop/site-kit": "file:./vendor/site-kit",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "astro": "^7.2.10",
     "astro-icon": "^1.2.0",
     "maplibre-gl": "^6.8.0"
