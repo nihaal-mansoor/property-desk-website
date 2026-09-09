@@ -45,6 +45,8 @@ const JS = String.raw`
   let detail = {};
   let budgets = [];
   let budgetIdx = 0;      // 0 means "any"
+  let selectedId = null;  // sticky: only a click changes it
+  let compare = [];       // up to three, compared below the map
   let metric = "psf";
   const AED = new Intl.NumberFormat("en-AE", { style: "currency", currency: "AED", maximumFractionDigits: 0, notation: "compact" });
 
@@ -92,6 +94,17 @@ const JS = String.raw`
       }
     }
 
+    /* The biggest home the budget reaches, preferring the size that actually
+       trades in volume over a thin outlier one notch larger. */
+    function withinBudget(d, budget) {
+      const within = d.rooms.filter((r) => r.price <= budget);
+      if (!within.length) return null;
+      const deepest = Math.max(...within.map((r) => r.n));
+      const solid = within.filter((r) => r.n >= Math.max(5, deepest * 0.1));
+      const best = (solid.length ? solid : within).slice(-1)[0];
+      return best.rooms + ", about " + best.sqft.toLocaleString("en-AE") + " sqft";
+    }
+
     function rowsHtml(rows) {
       return rows.map(([a, b]) =>
         '<div class="row"><span class="row-label">' + a + '</span>' +
@@ -120,29 +133,43 @@ const JS = String.raw`
         ]));
       }
       if (projects) {
+        /* Names only. A project is not a page and not a link: this says what
+           has traded, never what is for sale. */
         projects.innerHTML = d.projects.length
           ? rowsHtml(d.projects.map((p) => [p.name, p.n + " sales"]))
-          : '<p class="meta" style="margin:0">No named project activity.</p>';
+          : '<p class="meta" style="margin:0">No named project activity in the last year.</p>';
       }
 
       /* What the chosen budget actually reaches here. */
       if (answer) {
         if (budgetIdx === 0) { answer.hidden = true; return; }
         const budget = budgets[budgetIdx - 1];
-        const within = d.rooms.filter((r) => r.price <= budget);
-        const best = within[within.length - 1];
+        const best = withinBudget(d, budget);
         const n = d.reach[budgetIdx - 1] ?? 0;
         answer.hidden = false;
-        document.getElementById("p-budget-line").innerHTML = best
-          ? best.rooms + " &middot; about " + best.sqft.toLocaleString("en-AE") + " sqft"
-          : "Nothing typically trades at this budget here.";
+        document.getElementById("p-budget-line").textContent =
+          best ?? "Nothing typically trades at this budget here.";
         document.getElementById("p-budget-count").textContent = n
           ? n.toLocaleString("en-AE") + " sales at or under " + AED.format(budget) + " in the last 12 months."
           : "No sales at or under " + AED.format(budget) + " in the last 12 months.";
       }
     }
 
-    function select(p) {
+    function markSelected(id) {
+      if (selectedId !== null) map.setFeatureState({ source: "communities", id: selectedId }, { selected: false });
+      selectedId = id ?? null;
+      if (selectedId !== null) map.setFeatureState({ source: "communities", id: selectedId }, { selected: true });
+    }
+
+    function clearSelection() {
+      markSelected(null);
+      const hint = document.getElementById("p-hint");
+      if (hint) hint.textContent = "Click any area on the map";
+      const btn = document.getElementById("p-compare");
+      if (btn) btn.hidden = true;
+    }
+
+    function select(p, id) {
       const set = (id, v) => {
         const n = document.getElementById(id); if (n) n.textContent = v;
       };
@@ -155,7 +182,24 @@ const JS = String.raw`
       set("p-sales12", fmt.format(p.sales12 ?? 0));
       set("p-offplan", p.offplan != null ? p.offplan + "%" : "n/a");
       set("p-financed", p.financed != null ? p.financed + "%" : "n/a");
+      const liq = document.getElementById("p-liquidity-note");
+      if (liq) {
+        const n = p.sales12 ?? 0;
+        liq.textContent = n < 50
+          ? "Thin. Selling again here may take time."
+          : n < 300 ? "Moderate turnover." : "Actively traded.";
+      }
       fillDetail(p.id);
+      markSelected(id);
+      const hint = document.getElementById("p-hint");
+      if (hint) hint.textContent = "Selected";
+      const btn = document.getElementById("p-compare");
+      if (btn) {
+        btn.hidden = false;
+        btn.disabled = compare.some((c) => c.id === p.id) || compare.length >= 3;
+        btn.textContent = compare.some((c) => c.id === p.id) ? "Added" : "Compare";
+        btn.onclick = () => addCompare(p);
+      }
     }
 
     map.on("load", async () => {
@@ -179,8 +223,13 @@ const JS = String.raw`
       map.addLayer({
         id: "communities-line", type: "line", source: "communities",
         paint: {
-          "line-color": "#FFFFFF",
-          "line-width": ["case", ["boolean", ["feature-state", "hover"], false], 2.4, 0.6],
+          "line-color": ["case", ["boolean", ["feature-state", "selected"], false], "#0E1116", "#FFFFFF"],
+          "line-width": [
+            "case",
+            ["boolean", ["feature-state", "selected"], false], 2.6,
+            ["boolean", ["feature-state", "hover"], false], 1.8,
+            0.6,
+          ],
         },
       }, before);
 
@@ -202,23 +251,121 @@ const JS = String.raw`
       }
       map.fitBounds([[west, south], [east, north]], { padding: 40, duration: 0 });
 
+      /* Hover shows a label at the cursor and nothing else. The panel only
+         changes on click, because a panel that follows the pointer can only be
+         read while the pointer is still, and reading it means moving the
+         pointer. */
       let hovered = null;
+      const tip = document.getElementById("map-tip");
+
       map.on("mousemove", "communities", (e) => {
         if (!e.features?.length) return;
         map.getCanvas().style.cursor = "pointer";
-        if (hovered !== null) map.setFeatureState({ source: "communities", id: hovered }, { hover: false });
-        hovered = e.features[0].id;
+        const f = e.features[0];
+        if (hovered !== null && hovered !== f.id) {
+          map.setFeatureState({ source: "communities", id: hovered }, { hover: false });
+        }
+        hovered = f.id;
         map.setFeatureState({ source: "communities", id: hovered }, { hover: true });
-        select(e.features[0].properties);
+        if (tip) {
+          const p = f.properties;
+          const headline = budgetIdx > 0
+            ? (p["r" + (budgetIdx - 1)] ?? 0).toLocaleString("en-AE") + " in range"
+            : p.psf != null ? fmt.format(p.psf) + " /sqft" : "too few sales";
+          tip.innerHTML = "<strong>" + p.name + "</strong><span>" + headline + "</span>";
+          tip.hidden = false;
+          tip.style.transform = "translate(" + (e.point.x + 14) + "px," + (e.point.y + 14) + "px)";
+        }
       });
       map.on("mouseleave", "communities", () => {
         map.getCanvas().style.cursor = "";
         if (hovered !== null) map.setFeatureState({ source: "communities", id: hovered }, { hover: false });
         hovered = null;
+        if (tip) tip.hidden = true;
       });
       map.on("click", "communities", (e) => {
-        if (e.features?.length) select(e.features[0].properties);
+        if (e.features?.length) select(e.features[0].properties, e.features[0].id);
       });
+      /* Clicking the sea or empty desert clears, so there is a way out. */
+      map.on("click", (e) => {
+        const hits = map.queryRenderedFeatures(e.point, { layers: ["communities"] });
+        if (!hits.length) clearSelection();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") clearSelection();
+      });
+    });
+
+    function addCompare(p) {
+      if (compare.some((c) => c.id === p.id) || compare.length >= 3) return;
+      compare.push(p);
+      renderCompare();
+      const btn = document.getElementById("p-compare");
+      if (btn) { btn.textContent = "Added"; btn.disabled = true; }
+    }
+
+    function renderCompare() {
+      const section = document.getElementById("compare");
+      const table = document.getElementById("compare-table");
+      const note = document.getElementById("compare-note");
+      if (!section || !table) return;
+      section.hidden = compare.length === 0;
+      if (!compare.length) return;
+
+      const budget = budgetIdx > 0 ? budgets[budgetIdx - 1] : null;
+      const rows = [
+        ["Median AED/sqft", (c) => (c.psf != null ? fmt.format(c.psf) : "n/a")],
+        ["Price growth", (c) => (c.growth != null ? (c.growth > 0 ? "+" : "") + c.growth + "%" : "n/a")],
+        ["Sales, last 12 months", (c) => (c.sales12 ?? 0).toLocaleString("en-AE")],
+        ["Off-plan share", (c) => (c.offplan != null ? c.offplan + "%" : "n/a")],
+        ["Financed share", (c) => (c.financed != null ? c.financed + "%" : "n/a")],
+      ];
+      if (budget) {
+        rows.unshift([
+          "At " + AED.format(budget),
+          (c) => {
+            const d = detail[c.id];
+            if (!d) return "n/a";
+            return withinBudget(d, budget) ?? "out of reach";
+          },
+        ]);
+        rows.splice(1, 0, [
+          "Sales in range",
+          (c) => ((detail[c.id]?.reach?.[budgetIdx - 1]) ?? 0).toLocaleString("en-AE"),
+        ]);
+      }
+
+      table.innerHTML =
+        "<thead><tr><th scope='col' class='cmp-h'></th>" +
+        compare.map((c, i) =>
+          "<th scope='col' class='cmp-h'>" + c.name +
+          "<button type='button' class='cmp-x' data-i='" + i + "' aria-label='Remove " + c.name + "'>Remove</button></th>").join("") +
+        "</tr></thead><tbody>" +
+        rows.map(([label, fn]) =>
+          "<tr><th scope='row' class='cmp-l'>" + label + "</th>" +
+          compare.map((c) => "<td class='cmp-v num'>" + fn(c) + "</td>").join("") + "</tr>").join("") +
+        "</tbody>";
+
+      if (note) {
+        note.textContent = budget
+          ? "Compared at " + AED.format(budget) + ". Change the budget above and these update."
+          : "Pick a budget above and these gain a row for what it buys in each.";
+      }
+      table.querySelectorAll(".cmp-x").forEach((b) => {
+        b.addEventListener("click", () => {
+          compare.splice(Number(b.dataset.i), 1);
+          renderCompare();
+          const cb = document.getElementById("p-compare");
+          if (cb && selectedId !== null) { cb.disabled = compare.length >= 3; cb.textContent = "Compare"; }
+        });
+      });
+    }
+
+    document.getElementById("compare-clear")?.addEventListener("click", () => {
+      compare = [];
+      renderCompare();
+      const cb = document.getElementById("p-compare");
+      if (cb) { cb.disabled = false; cb.textContent = "Compare"; }
     });
 
     document.querySelectorAll(".metric[data-metric]").forEach((btn) => {
@@ -241,6 +388,7 @@ const JS = String.raw`
         paint(metric);
         const sel = document.getElementById("p-name")?.dataset.id;
         if (sel) fillDetail(sel);
+        renderCompare();
       });
     });
   }

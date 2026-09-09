@@ -102,39 +102,59 @@ const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
     <div id="map" class="map-canvas" role="application"
          aria-label="Interactive map of Dubai communities. The same figures are in the table below."></div>
 
+    <!-- Follows the cursor. Deliberately tiny: the panel is where reading
+         happens, and it only changes on click. -->
+    <div id="map-tip" class="map-tip" aria-hidden="true" hidden></div>
+
     <aside class="map-panel" aria-live="polite">
-      <p class="meta" style="margin:0;">Selected</p>
-      <h2 id="p-name" style="font-size: var(--step-2); margin-top: var(--space-2xs);">{named(top)}</h2>
-      <p class="meta" id="p-official" style="margin-top: var(--space-2xs);">{top.name}</p>
+      <div class="panel-head">
+        <div style="min-width:0;">
+          <p class="meta" style="margin:0;" id="p-hint">Click any area on the map</p>
+          <h2 id="p-name" style="font-size: var(--step-2); margin-top: var(--space-2xs);">{named(top)}</h2>
+          <p class="meta" id="p-official" style="margin-top: var(--space-2xs);">{top.name}</p>
+        </div>
+        <button type="button" id="p-compare" class="btn btn-quiet" hidden>Compare</button>
+      </div>
+
+      <!-- Leads with the sentence a buyer could repeat to someone, not a ratio. -->
       <div id="p-budget" class="budget-answer" hidden>
         <p class="meta" style="margin:0;">At your budget, here</p>
-        <p id="p-budget-line" style="margin:var(--space-2xs) 0 0; font-weight:500;"></p>
+        <p id="p-budget-line" style="margin:var(--space-2xs) 0 0; font-weight:500; font-size:var(--step-1);"></p>
         <p class="meta" id="p-budget-count" style="margin:var(--space-2xs) 0 0;"></p>
       </div>
 
+      <!-- Liquidity next. It is what quietly ruins an off-plan investment and
+           no property site shows it. -->
       <div class="rows" style="margin-top: var(--space-s);">
-        <div class="row"><span class="row-label">Median AED/sqft</span>
-          <span class="row-value" id="p-psf">{fmt.format(top.psf as number)}</span></div>
-        <div class="row"><span class="row-label">Price growth
-          <span class="row-note">Today against the 2020 to 2022 average</span></span>
-          <span class="row-value" id="p-growth">{top.growth !== null ? `${top.growth > 0 ? "+" : ""}${top.growth}%` : "n/a"}</span></div>
-        <div class="row"><span class="row-label">Sales, last 12 months</span>
+        <div class="row"><span class="row-label">Sales in the last year
+          <span class="row-note" id="p-liquidity-note">How easily you could sell again</span></span>
           <span class="row-value" id="p-sales12">{fmt.format(top.sales12)}</span></div>
-        <div class="row"><span class="row-label">Off-plan share</span>
-          <span class="row-value" id="p-offplan">{top.offplan !== null ? `${top.offplan}%` : "n/a"}</span></div>
-        <div class="row"><span class="row-label">Financed share
-          <span class="row-note">Mortgages per 100 sales</span></span>
-          <span class="row-value" id="p-financed">{top.financed !== null ? `${top.financed}%` : "n/a"}</span></div>
       </div>
 
-      <details class="panel-more">
-        <summary class="meta">Latest sales here</summary>
-        <div id="p-recent" class="rows" style="margin-top: var(--space-2xs);"></div>
-      </details>
+      <section class="panel-block">
+        <h3 class="panel-h">Projects trading here</h3>
+        <div id="p-projects" class="rows"></div>
+      </section>
+
+      <section class="panel-block">
+        <h3 class="panel-h">Latest registered sales</h3>
+        <div id="p-recent" class="rows"></div>
+      </section>
 
       <details class="panel-more">
-        <summary class="meta">Most active projects</summary>
-        <div id="p-projects" class="rows" style="margin-top: var(--space-2xs);"></div>
+        <summary class="meta">Market detail</summary>
+        <div class="rows" style="margin-top: var(--space-2xs);">
+          <div class="row"><span class="row-label">Median AED/sqft</span>
+            <span class="row-value" id="p-psf">{fmt.format(top.psf as number)}</span></div>
+          <div class="row"><span class="row-label">Price growth
+            <span class="row-note">Today against the 2020 to 2022 average</span></span>
+            <span class="row-value" id="p-growth">{top.growth !== null ? `${top.growth > 0 ? "+" : ""}${top.growth}%` : "n/a"}</span></div>
+          <div class="row"><span class="row-label">Off-plan share</span>
+            <span class="row-value" id="p-offplan">{top.offplan !== null ? `${top.offplan}%` : "n/a"}</span></div>
+          <div class="row"><span class="row-label">Financed share
+            <span class="row-note">Mortgages per 100 sales</span></span>
+            <span class="row-value" id="p-financed">{top.financed !== null ? `${top.financed}%` : "n/a"}</span></div>
+        </div>
       </details>
     </aside>
 
@@ -158,6 +178,21 @@ const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
   </div>
 
   <div class="shell">
+    <!-- Compare lives here rather than on the map. Three columns of figures on
+         top of a map is two things fighting for the same space. -->
+    <section id="compare" class="compare" hidden>
+      <div class="compare-head">
+        <h2>Side by side</h2>
+        <button type="button" id="compare-clear" class="btn btn-quiet">Clear</button>
+      </div>
+      <p class="meta" id="compare-note" style="margin-top: var(--space-2xs);">
+        Add up to three areas from the map to compare them on the same figures.
+      </p>
+      <div style="overflow-x:auto; margin-top: var(--space-m);">
+        <table id="compare-table" style="width:100%; border-collapse:collapse;"></table>
+      </div>
+    </section>
+
     <section style="margin-top: var(--space-xl);">
       <h2>Every community with enough sales to report</h2>
       <p class="meta" style="margin-top: var(--space-2xs); max-width: 62ch;">

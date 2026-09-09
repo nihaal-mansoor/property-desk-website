@@ -103,6 +103,9 @@ const lkp = new Map();
 /* ---------- transactions ---------- */
 const now = new Date("2026-09-04");
 const cut12 = new Date(now); cut12.setFullYear(now.getFullYear() - 1);
+/** Studio through to 7 B/R, and penthouses. Excludes Shop, Office, Land. */
+const RESIDENTIAL = /^(studio|\d+\s*b\/r|penthouse)/i;
+
 let latest = "";
 const stats = new Map();
 const get = (m) => {
@@ -163,8 +166,11 @@ for (const file of readdirSync(TX).filter((f) => f.endsWith(".csv"))) {
           s.recent.length = 40;
         }
       }
-      /* What a given budget actually buys here, by bedroom count. */
-      if (rooms && worth > 0 && sqft) {
+      /* What a given budget actually buys here, by bedroom count.
+         Residential only: the record also carries Shop, Office and Land, and
+         picking the dearest thing within budget kept landing on a retail unit,
+         which is not what someone asking "what does 5m buy" means. */
+      if (RESIDENTIAL.test(rooms) && worth > 0 && sqft) {
         if (!s.byRooms.has(rooms)) s.byRooms.set(rooms, { w: [], ft: [] });
         const b = s.byRooms.get(rooms);
         b.w.push(worth); b.ft.push(sqft);
