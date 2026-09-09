@@ -31,8 +31,16 @@ const JS = String.raw`
   const el = document.getElementById("map");
   if (el) {
     const fmt = new Intl.NumberFormat("en-AE");
-    const RAMP = ["#EAF0F7","#CBDCEC","#A3C2DD","#75A3CA","#4A82B4","#2A5F94","#14406B","#0B2A48"];
-    const NODATA = "#D9DEE4";
+    /* The basemap has to follow the reader's theme, or a dark panel ends up
+       sitting on a white map, which is what happens when you theme your own
+       chrome and forget the thing underneath it. The ramp inverts with it,
+       because pale blues disappear against a dark ground. */
+    const dark = window.matchMedia("(prefers-color-scheme: dark)").matches &&
+      document.documentElement.dataset.theme !== "light";
+    const RAMP = dark
+      ? ["#16232F","#1D3549","#264866","#305D84","#3B73A3","#4A8CC2","#63A6DA","#8CC4EC"]
+      : ["#EAF0F7","#CBDCEC","#A3C2DD","#75A3CA","#4A82B4","#2A5F94","#14406B","#0B2A48"];
+    const NODATA = dark ? "#232A31" : "#D9DEE4";
     const LABEL = {
       psf: "Median AED per sqft, sales since 2023",
       growth: "Change against 2020 to 2022",
@@ -52,7 +60,9 @@ const JS = String.raw`
 
     const map = new Map({
       container: "map",
-      style: "https://tiles.openfreemap.org/styles/positron",
+      style: dark
+        ? "https://tiles.openfreemap.org/styles/dark"
+        : "https://tiles.openfreemap.org/styles/positron",
       // Overwritten by fitBounds once the data is in. A hardcoded centre framed
       // the view on Sharjah, because Dubai's built-up area is not in the middle
       // of Dubai's territory.
@@ -223,7 +233,11 @@ const JS = String.raw`
       map.addLayer({
         id: "communities-line", type: "line", source: "communities",
         paint: {
-          "line-color": ["case", ["boolean", ["feature-state", "selected"], false], "#0E1116", "#FFFFFF"],
+          "line-color": [
+            "case",
+            ["boolean", ["feature-state", "selected"], false], dark ? "#FFFFFF" : "#0E1116",
+            dark ? "#0B0D10" : "#FFFFFF",
+          ],
           "line-width": [
             "case",
             ["boolean", ["feature-state", "selected"], false], 2.6,

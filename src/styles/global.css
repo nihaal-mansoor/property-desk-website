@@ -275,12 +275,16 @@
     padding: var(--space-s);
     background: var(--paper);
     border: 1px solid var(--rule-2);
-    max-height: calc(100% - 2 * var(--space-s));
+    /* Stops short of the bottom so a long project list cannot run the full
+       height of the map and crowd everything else out. */
+    max-height: min(32rem, calc(100% - 4 * var(--space-s)));
     overflow-y: auto;
   }
+  /* Bottom right, clear of the panel on the left. Lifted above MapLibre's own
+     attribution strip, which also lives in this corner. */
   .map-legend {
-    position: absolute; bottom: var(--space-s); left: var(--space-s); z-index: 2;
-    width: min(24rem, calc(100% - 2 * var(--space-s)));
+    position: absolute; bottom: calc(var(--space-s) + 1.4rem); right: var(--space-s); z-index: 2;
+    width: min(22rem, calc(100% - 2 * var(--space-s)));
     padding: var(--space-xs) var(--space-s);
     background: var(--paper);
     border: 1px solid var(--rule-2);
@@ -295,6 +299,12 @@
     .map-canvas { height: 62vh; }
     .map-panel, .map-legend { position: static; width: auto; margin: var(--space-s) var(--gutter) 0; }
     .map-panel { max-height: none; }
+  }
+
+  /* MapLibre paints its own canvas background before tiles arrive, and it does
+     not know about the site's theme. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .map-canvas { background: var(--sunk); }
   }
 
   /* MapLibre's own chrome, brought into this site's square, cool idiom. */
