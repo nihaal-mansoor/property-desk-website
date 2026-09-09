@@ -1,60 +1,134 @@
 ---
 import Base from "../layouts/Base.astro";
-import { CHECKED, VAT } from "../lib/costs";
+import map from "../data/map.json";
+
+/*
+ * The credibility page. It is what a careful reader and an answer engine both
+ * check, so the figures in it are read from the same file the map is built
+ * from rather than typed. It described the transaction-cost calculator until
+ * September 2026, which the site no longer contains.
+ */
+const cs = map.communities as any[];
+const sum = (map as any).summary;
+const fmt = new Intl.NumberFormat("en-AE");
+const asOf = new Date((map as any).latest).toLocaleDateString("en-GB", {
+  day: "numeric", month: "long", year: "numeric",
+});
+const PERIODS = [
+  { id: "12m", label: "twelve months" },
+  { id: "3y", label: "three years" },
+  { id: "5y", label: "five years" },
+  { id: "10y", label: "ten years" },
+];
 ---
 
 <Base
   title="Method and sources"
-  description="How Property Desk calculates transaction costs, what it assumes, and what it deliberately does not tell you."
+  description="How Property Desk turns the Dubai Land Department transaction register into a community price map: the join, the thresholds, and what is excluded."
   path="/method"
 >
   <div class="col" style="padding-block: var(--space-l) var(--space-xl);">
     <h1>Method and sources</h1>
+    <p class="lede">
+      Everything on this site is computed from one file: the Dubai Land
+      Department transaction register, published through Dubai Pulse open data.
+      Nothing is an asking price, an estimate or a projection.
+    </p>
 
-    <h2 style="margin-top: var(--space-l);">Where the figures come from</h2>
+    <h2 style="margin-top: var(--space-l);">What is counted</h2>
     <p style="margin-top: var(--space-s);">
-      Statutory charges, the transfer fee, mortgage registration and title deed
-      issuance, are the Dubai Land Department&rsquo;s published rates. The
-      registration trustee fee is the standard tariff, which has a lower band
-      below AED 500,000. VAT is applied at {(VAT * 100).toFixed(0)}% to the
-      services that carry it, and not to the statutory fees, which do not.
+      {fmt.format((map as any).totalSales)} residential sales, registered up to
+      {asOf}. A sale counts as residential when the register describes it as a
+      studio, a numbered bedroom count or a penthouse. Shops, offices and land
+      plots are excluded, because a price per square foot that mixes a shop with
+      an apartment describes neither.
     </p>
     <p>
-      Agency commission, the bank arrangement fee, the valuation and the
-      developer&rsquo;s no objection certificate are market practice rather than
-      published rates. Those are shown as a midpoint of the usual range and
-      marked as estimates, because presenting a negotiated fee as a fixed one
-      would be the same mistake this site exists to correct.
-    </p>
-    <p>All figures were last checked in {CHECKED}.</p>
-
-    <h2 style="margin-top: var(--space-l);">The valuation rule</h2>
-    <p style="margin-top: var(--space-s);">
-      A lender advances against the lower of its own valuation and the price
-      agreed. The calculator applies that rule rather than assuming the two
-      match, because the gap between them is the single most common reason a
-      buyer arrives at transfer short of cash.
+      Mortgage registrations are counted separately from sales. They are not a
+      subset of them, which is why the financed share is expressed as
+      registrations per hundred sales rather than as a percentage of buyers.
     </p>
 
-    <h2 style="margin-top: var(--space-l);">What this does not do</h2>
+    <h2 style="margin-top: var(--space-l);">How a sale is matched to a community</h2>
     <p style="margin-top: var(--space-s);">
-      It does not tell you what a property is worth, what to buy, or whether to
-      buy at all. It has no view on any building, community or developer, and it
-      does not carry listings. It answers one question: given a price you have
-      already agreed, what will the transaction cost you.
+      This is the step that most often goes wrong. The transaction file carries
+      an <code>area_id</code>, and the community boundary file carries a
+      <code>COMM_NUM</code>. They look like the same number and they are not.
+      Joining them directly produces roughly ninety coincidental matches whose
+      names disagree with each other, which is how a map ends up confidently
+      showing the wrong prices in the wrong places.
     </p>
     <p>
-      It also does not model ongoing costs. Service charges, cooling, insurance
-      and mortgage payments all continue after transfer and none of them appear
-      here.
+      The register's own area lookup is the bridge: <code>area_id</code> to the
+      lookup's municipality number, and only then to the boundary file. Where a
+      community is better known by another name, the familiar name is shown
+      first and the official one beneath it, because nobody searches for Al
+      Thanyah Fifth.
+    </p>
+
+    <h2 style="margin-top: var(--space-l);">Medians, not averages</h2>
+    <p style="margin-top: var(--space-s);">
+      Every headline figure is a median. A handful of very large sales pulls an
+      average upward, and in a market with as much variation as Dubai's the
+      average of a community is frequently a number that no property there
+      actually sold for.
+    </p>
+    <p>
+      A community is only reported once it records at least 20 priced sales
+      within the period being shown. Below that a single tower or a single land
+      plot decides the answer. That threshold is the reason parts of the map are
+      grey, and the reason longer periods fill it in:
+    </p>
+    <ul style="margin-top: var(--space-s);">
+      {PERIODS.map((p) => (
+        <li>
+          Over {p.label}, {sum[p.id].reportable} of {cs.length} communities
+          are reportable, from {fmt.format(sum[p.id].sales)} sales.
+        </li>
+      ))}
+    </ul>
+
+    <h2 style="margin-top: var(--space-l);">How growth is measured</h2>
+    <p style="margin-top: var(--space-s);">
+      Each period is compared against the equally long period immediately before
+      it. The twelve month figure is measured against the twelve months before
+      that, and the ten year figure against the decade before that. A short
+      window set against a fixed distant baseline would flatter every area the
+      further back the baseline reached, and would hide a market that has turned
+      recently.
+    </p>
+    <p>
+      Large swings in recently launched communities usually reflect a change in
+      what is being sold there rather than a repricing of the same stock. An
+      area whose first towers complete will shift from land and off-plan studios
+      to finished apartments, and the median moves with the mix.
+    </p>
+
+    <h2 style="margin-top: var(--space-l);">What the numbers are not</h2>
+    <p style="margin-top: var(--space-s);">
+      A community median is not a valuation. It covers every building, age,
+      floor and finish in that community at once, and the spread inside a single
+      community is often wider than the gap between two communities. Nothing
+      here tells you what a particular property is worth.
+    </p>
+    <p>
+      The register records what was registered. It does not capture what was
+      paid outside the recorded price, what incentives a developer attached, or
+      what a payment plan was worth in present value. Off-plan sales in
+      particular are registered at the contract price, which is not the same as
+      a cash price today.
+    </p>
+    <p>
+      Boundaries are simplified for drawing. They are accurate enough to
+      identify a community and are not a cadastral record.
     </p>
 
     <h2 style="margin-top: var(--space-l);">Corrections</h2>
     <p style="margin-top: var(--space-s);">
-      Fees change, and a fee table with no date is a fee table that is quietly
-      wrong. If a figure here no longer matches what you were charged, that is
-      worth telling us, and the date above is how you check whether it has been
-      reviewed since.
+      Every figure carries the date of the most recent sale behind it, currently
+      {asOf}. A market figure with no date is a market figure that is quietly
+      wrong, and the date above is how you check whether this has been rebuilt
+      since you last looked.
     </p>
   </div>
 </Base>

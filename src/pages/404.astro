@@ -1,0 +1,32 @@
+---
+import Base from "../layouts/Base.astro";
+import map from "../data/map.json";
+
+/*
+ * A real 404, because Vercel's default carries no lang and no title, which is
+ * a WCAG 3.1.1 failure on a page crawlers will reach. noindex, follow: the
+ * page should never rank, but the link out of it should still be followed.
+ */
+const cs = map.communities as any[];
+const reportable = cs.filter((c) => c.periods["12m"]?.psf != null).length;
+---
+
+<Base
+  title="Page not found"
+  description="That page does not exist on Property Desk. The community price map is on the home page."
+  path="/404"
+  noindex
+>
+  <div class="shell" style="padding-block: var(--space-xl) 0; max-width: 62ch;">
+    <h1>That page does not exist</h1>
+    <p class="lede">
+      Nothing is published at this address. Property Desk is a single map of
+      Dubai community sale prices, built from the Land Department register.
+    </p>
+    <p style="margin-top: var(--space-m);">
+      <a href="/">Go to the map</a>, which covers {reportable} communities with
+      enough registered sales to report a median, or read
+      <a href="/method">how the figures are built</a>.
+    </p>
+  </div>
+</Base>

@@ -2,31 +2,41 @@
 import Base from "../layouts/Base.astro";
 import config from "../../site.config";
 ---
-<Base title="Privacy" description="What Property Desk records. Almost nothing: the calculator runs entirely in your browser." path="/privacy">
+<Base title="Privacy" description="What Property Desk records. There is no form, no account and no tracking: the site is static files and a public dataset." path="/privacy">
   <div class="col" style="padding-block: var(--space-l) var(--space-xl);">
     <h1>Privacy</h1>
 
-    <h2 style="margin-top: var(--space-l);">The calculator</h2>
+    <h2 style="margin-top: var(--space-l);">There is nothing to submit</h2>
     <p style="margin-top: var(--space-s);">
-      Every figure you type stays in your browser. The price, the loan, the
-      commission you negotiated: none of it is sent anywhere, because there is
-      nowhere for it to be sent. This site is a set of static files with no
-      server to receive a form and no database behind it.
+      This site has no form, no account, no sign-in, no comment box and no
+      newsletter. There is no field anywhere on it for you to type into, so
+      there is nothing of yours for it to receive.
     </p>
     <p>
-      That is worth stating plainly, because what you enter here would tell
-      somebody what you are about to buy and what you can afford.
+      The map runs entirely in your browser. Which community you click, which
+      period you choose and which areas you compare are never sent anywhere.
+      They are not stored, not logged and not counted.
     </p>
 
     <h2 style="margin-top: var(--space-l);">What is recorded</h2>
     <p style="margin-top: var(--space-s);">
-      There is no account, no sign-in, no comment form and no newsletter. We set
-      no advertising cookies and run no advertising trackers.
+      We set no advertising cookies and run no advertising trackers. Our host
+      records ordinary web server logs, including IP addresses, in order to
+      serve the site and absorb abuse. We do not combine those with anything
+      else and do not use them to identify anyone.
     </p>
     <p>
-      Our host records ordinary web server logs, including IP addresses, in order
-      to serve the site and absorb abuse. We do not combine those with anything
-      else and do not use them to identify anyone.
+      The basemap is served by OpenFreeMap, so your browser requests map tiles
+      from them directly and they see those requests, as any provider of an
+      image on a page would.
+    </p>
+
+    <h2 style="margin-top: var(--space-l);">The data on the map is not about you</h2>
+    <p style="margin-top: var(--space-s);">
+      Everything shown is aggregate: medians and counts across whole
+      communities, computed from the Dubai Land Department's published
+      transaction register. No buyer, seller or owner is named anywhere on this
+      site, and no individual property is identified.
     </p>
 
     <h2 style="margin-top: var(--space-l);">Your rights</h2>
@@ -36,9 +46,9 @@ import config from "../../site.config";
       nothing from you directly, in practice there is nothing of yours here to
       return.
     </p>
-    <p class="meta" style="margin-top: var(--space-l);">
-      If that changes, this page changes with it, and the date it changed will be
-      on it.
+    <p>
+      If that changes, and it will the day a contact form is added, this page
+      changes with it.
     </p>
   </div>
 </Base>
