@@ -259,6 +259,67 @@
   }
   .row-total .row-value { font-size: var(--step-2); }
 
+  /* The map runs edge to edge. It is the product, and the reading shell would
+     only shrink it. The panel and legend float over it rather than taking width
+     away from it. */
+  .map-full { position: relative; width: 100%; margin-block: var(--space-m); }
+  .map-canvas {
+    width: 100%;
+    height: clamp(26rem, 72vh, 46rem);
+    background: var(--sunk);
+  }
+
+  .map-panel {
+    position: absolute; top: var(--space-s); left: var(--space-s); z-index: 2;
+    width: min(19rem, calc(100% - 2 * var(--space-s)));
+    padding: var(--space-s);
+    background: var(--paper);
+    border: 1px solid var(--rule-2);
+    max-height: calc(100% - 2 * var(--space-s));
+    overflow-y: auto;
+  }
+  .map-legend {
+    position: absolute; bottom: var(--space-s); left: var(--space-s); z-index: 2;
+    width: min(24rem, calc(100% - 2 * var(--space-s)));
+    padding: var(--space-xs) var(--space-s);
+    background: var(--paper);
+    border: 1px solid var(--rule-2);
+  }
+  .map-noscript {
+    position: absolute; inset: 0; z-index: 3; display: grid; place-items: center;
+    padding: var(--space-l); background: var(--paper); text-align: center;
+  }
+
+  /* On a phone the panel would cover the map it describes, so it sits under it. */
+  @media (max-width: 48rem) {
+    .map-canvas { height: 62vh; }
+    .map-panel, .map-legend { position: static; width: auto; margin: var(--space-s) var(--gutter) 0; }
+    .map-panel { max-height: none; }
+  }
+
+  /* MapLibre's own chrome, brought into this site's square, cool idiom. */
+  .maplibregl-ctrl-group { border-radius: 0 !important; }
+  .maplibregl-ctrl-group button { border-radius: 0 !important; }
+  .maplibregl-ctrl-attrib { font-family: var(--font-sans); font-size: 11px; }
+
+  .metrics { display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
+  .metric {
+    font-family: var(--font-sans); font-size: var(--step--1);
+    padding: 0.4rem 0.75rem; border: 1px solid var(--rule-2);
+    border-radius: var(--radius); background: var(--surface);
+    color: var(--ink-2); cursor: pointer;
+  }
+  .metric:hover { background: var(--sunk); }
+  .metric[aria-pressed="true"] {
+    background: var(--signal); border-color: var(--signal); color: var(--signal-ink); font-weight: 500;
+  }
+
+  .legend { display: flex; margin-top: var(--space-s); }
+  .swatch { flex: 1 1 0; height: 10px; }
+
+  #map path { cursor: pointer; transition: stroke-width 0.08s; }
+  #map path:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
   .sr-only {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;

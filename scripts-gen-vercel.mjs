@@ -4,7 +4,19 @@ import { vercelHeadersConfig } from "../site-kit/src/security/headers.ts";
 
 const config = {
   $schema: "https://openapi.vercel.sh/vercel.json",
-  ...vercelHeadersConfig({ analytics: true, turnstile: true, useNonce: false }),
+  ...vercelHeadersConfig({
+    analytics: true,
+    // Neither is used on this site.
+    turnstile: false,
+    clarity: false,
+    useNonce: false,
+    // The map's tiles and style JSON. Named explicitly rather than a wildcard,
+    // so only this host can serve map data. MapLibre decodes tiles in a worker
+    // it compiles to a blob, which default-src 'self' would otherwise block.
+    connectSrc: ["https://tiles.openfreemap.org"],
+    imgSrc: ["https://tiles.openfreemap.org", "blob:"],
+    workerSrc: ["blob:"],
+  }),
   cleanUrls: true,
   trailingSlash: false,
 };

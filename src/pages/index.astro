@@ -1,190 +1,167 @@
 ---
 import Base from "../layouts/Base.astro";
 import config from "../../site.config";
-import { computeCosts, DEFAULTS, CHECKED, AED, NUM } from "../lib/costs";
+import map from "../data/map.json";
 
 /*
- * The page is rendered at build time with a worked example at the default
- * price, so it is complete and readable with no JavaScript at all: every line,
- * every basis, every source. The enhancement script only recalculates the same
- * markup in place. (§4.2)
+ * The map is projected and coloured at build time, so the page is a complete,
+ * readable answer before any script runs. The enhancement only recolours the
+ * same paths for a different metric and fills the detail panel. (§4.2)
  */
-const example = computeCosts(DEFAULTS);
-const share = example.fees / DEFAULTS.price;
+const W = 1000, H = 760, PAD = 14;
+
+type C = (typeof map.communities)[number];
+const cs = map.communities as C[];
+
+/* Frame on the communities that actually have a market. Two thirds of Dubai's
+   land area is desert interior with no residential sales, and letting it set the
+   bounds shrinks the city everyone is looking for into a corner. The empty
+   communities are still drawn, they just do not get a vote on the framing. */
+const active = cs.filter((c) => c.psf !== null);
+const lons = active.flatMap((c) => c.rings.flat().map((p) => p[0]));
+const lats = active.flatMap((c) => c.rings.flat().map((p) => p[1]));
+const minX = Math.min(...lons), maxX = Math.max(...lons);
+const minY = Math.min(...lats), maxY = Math.max(...lats);
+const cosLat = Math.cos((((minY + maxY) / 2) * Math.PI) / 180);
+const scale = Math.min((W - 2 * PAD) / ((maxX - minX) * cosLat), (H - 2 * PAD) / (maxY - minY));
+const px = (p: number[]) =>
+  `${(PAD + (p[0] - minX) * cosLat * scale).toFixed(1)},${(H - PAD - (p[1] - minY) * scale).toFixed(1)}`;
+const pathFor = (c: C) => c.rings.map((r) => `M${r.map(px).join("L")}Z`).join("");
+
+/* Sequential: one hue, light to dark. Never a rainbow, never two hues. */
+const RAMP = ["#EAF0F7", "#CBDCEC", "#A3C2DD", "#75A3CA", "#4A82B4", "#2A5F94", "#14406B", "#0B2A48"];
+const NODATA = "#EDEFF2";
+
+const priced = cs.filter((c) => c.psf !== null).map((c) => c.psf as number).sort((a, b) => a - b);
+const breaks = RAMP.map((_, i) => priced[Math.floor((priced.length * i) / RAMP.length)]);
+function band(v: number | null) {
+  if (v === null) return NODATA;
+  for (let i = RAMP.length - 1; i >= 0; i--) if (v >= breaks[i]) return RAMP[i];
+  return RAMP[0];
+}
+
+const named = (c: C) =>
+  c.common ?? c.name.trim().toLowerCase().replace(/\b\w/g, (w) => w.toUpperCase());
+const ranked = [...cs].filter((c) => c.psf !== null).sort((a, b) => (b.psf as number) - (a.psf as number));
+const fmt = new Intl.NumberFormat("en-AE");
+/* The dearest community is a 22-sale island, which is a poor thing to open on.
+   Default to the busiest market instead. */
+const top = [...ranked].sort((a, b) => b.sales12 - a.sales12)[0];
 ---
 
 <Base
   title={config.brand}
-  description={config.description}
+  description="Every Dubai community, coloured by what property there actually sold for. Built from 1.78 million registered Land Department transactions."
   path="/"
 >
-  <div class="col" style="padding-block: var(--space-l) var(--space-xl);">
-    <h1>What does buying in Dubai actually cost?</h1>
-    <p class="meta" style="margin-top: var(--space-s); font-size: var(--step-0);">
-      Not the price. The cash you need on transfer day, every fee itemised, with
-      where each figure comes from. Checked {CHECKED}.
+  <div class="shell" style="padding-block: var(--space-l) var(--space-xl);">
+    <h1>Where the money actually goes in Dubai</h1>
+    <p class="meta" style="margin-top: var(--space-s); font-size: var(--step-0); max-width: 62ch;">
+      {cs.length} communities, coloured by the registered record rather than by
+      asking prices. Built from 1.78 million Land Department transactions.
+      Compiled {map.generated}.
     </p>
 
-    <!-- Stepped intake, one decision at a time. -->
-    <!-- Not a <form>: there is no server and nothing is ever submitted, so a
-         form element would be promising a submit that does not exist, and WCAG
-         H32 would rightly ask where its submit button is. A labelled group is
-         what this actually is. -->
-    <div id="calc" role="group" aria-labelledby="calc-h" style="margin-top: var(--space-l);">
-      <h2 id="calc-h" class="sr-only">Your purchase</h2>
-      <fieldset style="border:0; padding:0; margin:0 0 var(--space-m);">
-        <legend class="meta" style="padding:0 0 var(--space-2xs);">1. What is the agreed price?</legend>
-        <label class="sr-only" for="price">Agreed price in dirhams</label>
-        <input
-          class="field" id="price" name="price" type="number"
-          min="100000" max="500000000" step="10000" value={DEFAULTS.price}
-          inputmode="numeric"
-        />
-      </fieldset>
+    <nav class="metrics" aria-label="Colour the map by" style="margin-top: var(--space-m);">
+      <button type="button" class="metric" data-metric="psf" aria-pressed="true">Price per sqft</button>
+      <button type="button" class="metric" data-metric="growth" aria-pressed="false">Growth since 2020&ndash;22</button>
+      <button type="button" class="metric" data-metric="sales12" aria-pressed="false">Sales, last 12 months</button>
+      <button type="button" class="metric" data-metric="offplan" aria-pressed="false">Off-plan share</button>
+      <button type="button" class="metric" data-metric="financed" aria-pressed="false">Financed share</button>
+    </nav>
 
-      <fieldset style="border:0; padding:0; margin:0 0 var(--space-m);">
-        <legend class="meta" style="padding:0 0 var(--space-2xs);">2. How are you paying?</legend>
-        <div style="display:flex; gap:var(--space-s); flex-wrap:wrap;">
-          <label style="display:flex; align-items:center; gap:0.4rem;">
-            <input type="radio" name="funding" value="mortgage" checked /> Mortgage
-          </label>
-          <label style="display:flex; align-items:center; gap:0.4rem;">
-            <input type="radio" name="funding" value="cash" /> Cash
-          </label>
-        </div>
-        <div id="ltv-wrap" style="margin-top: var(--space-s);">
-          <label class="meta" for="ltv">Loan as a share of price: <span class="num" id="ltv-out">80%</span></label>
-          <input id="ltv" name="ltv" type="range" min="40" max="85" step="5" value="80" style="width:100%;" />
-        </div>
-      </fieldset>
+  </div>
 
-      <fieldset style="border:0; padding:0; margin:0 0 var(--space-m);">
-        <legend class="meta" style="padding:0 0 var(--space-2xs);">3. What are you buying?</legend>
-        <div style="display:flex; gap:var(--space-s); flex-wrap:wrap;">
-          <label style="display:flex; align-items:center; gap:0.4rem;">
-            <input type="radio" name="purchase" value="resale" checked /> Resale
-          </label>
-          <label style="display:flex; align-items:center; gap:0.4rem;">
-            <input type="radio" name="purchase" value="offplan" /> Off-plan
-          </label>
-        </div>
-      </fieldset>
+  <!-- Full width, edge to edge. The map is the product; the shell would only
+       shrink it. -->
+  <div class="map-full">
+    <div id="map" class="map-canvas" role="application"
+         aria-label="Interactive map of Dubai communities. The same figures are in the table below."></div>
 
-      <details style="margin-bottom: var(--space-m);">
-        <summary class="meta" style="cursor:pointer;">Adjust the negotiable parts</summary>
-        <div style="margin-top: var(--space-s); display:grid; gap:var(--space-s);">
-          <div>
-            <label class="meta" for="commission">
-              Agency commission: <span class="num" id="commission-out">2.0%</span>
-            </label>
-            <input id="commission" name="commission" type="range" min="0" max="3" step="0.25" value="2" style="width:100%;" />
-          </div>
-          <label style="display:flex; align-items:center; gap:0.5rem;" class="meta">
-            <input type="checkbox" id="noc" name="noc" /> I am paying the developer&rsquo;s no objection certificate
-          </label>
-          <label style="display:flex; align-items:center; gap:0.5rem;" class="meta">
-            <input type="checkbox" id="conveyancing" name="conveyancing" /> Using a conveyancer
-          </label>
-        </div>
-      </details>
+    <aside class="map-panel" aria-live="polite">
+      <p class="meta" style="margin:0;">Selected</p>
+      <h2 id="p-name" style="font-size: var(--step-2); margin-top: var(--space-2xs);">{named(top)}</h2>
+      <p class="meta" id="p-official" style="margin-top: var(--space-2xs);">{top.name}</p>
+      <div class="rows" style="margin-top: var(--space-s);">
+        <div class="row"><span class="row-label">Median AED/sqft</span>
+          <span class="row-value" id="p-psf">{fmt.format(top.psf as number)}</span></div>
+        <div class="row"><span class="row-label">Change vs 2020&ndash;22</span>
+          <span class="row-value" id="p-growth">{top.growth !== null ? `${top.growth > 0 ? "+" : ""}${top.growth}%` : "—"}</span></div>
+        <div class="row"><span class="row-label">Sales, last 12 months</span>
+          <span class="row-value" id="p-sales12">{fmt.format(top.sales12)}</span></div>
+        <div class="row"><span class="row-label">Off-plan share</span>
+          <span class="row-value" id="p-offplan">{top.offplan !== null ? `${top.offplan}%` : "—"}</span></div>
+        <div class="row"><span class="row-label">Financed share
+          <span class="row-note">Mortgages per 100 sales</span></span>
+          <span class="row-value" id="p-financed">{top.financed !== null ? `${top.financed}%` : "—"}</span></div>
+      </div>
+    </aside>
 
-      <noscript>
-        <p class="meta" style="border-left:2px solid var(--signal); padding-left:var(--space-s);">
-          The figures below are a worked example at {AED.format(DEFAULTS.price)},
-          with every line and its source. Changing the inputs needs JavaScript;
-          the arithmetic itself is on <a href="/method">the method page</a> if you
-          would rather do it yourself.
-        </p>
-      </noscript>
+    <div class="map-legend">
+      <div class="legend" aria-hidden="true">
+        {RAMP.map((c) => <span class="swatch" style={`background:${c}`}></span>)}
+      </div>
+      <p class="meta" id="legend-note" style="margin:var(--space-2xs) 0 0;">
+        Median AED per sqft, sales since 2023. Grey: too few sales to report.
+      </p>
     </div>
 
-    <!-- Result. Rendered server-side with the worked example. -->
-    <section aria-labelledby="result-h" style="margin-top: var(--space-l);">
-      <h2 id="result-h" style="font-size: var(--step-1);">
-        On <span class="num" id="echo-price">{AED.format(DEFAULTS.price)}</span>
-      </h2>
-
-      <div class="rows" id="lines" style="margin-top: var(--space-s);">
-        {example.lines.map((l) => (
-          <div class="row" data-line={l.id}>
-            <span class="row-label">
-              {l.label}
-              <span class="row-note">{l.basis}{l.estimate ? " · estimate" : ""}</span>
-            </span>
-            <span class="row-value" data-amount>{AED.format(l.amount)}</span>
-          </div>
-        ))}
+    <noscript>
+      <div class="map-noscript">
+        <p class="meta" style="margin:0;">
+          The map needs JavaScript. Every figure it shows is in the table below,
+          which does not.
+        </p>
       </div>
+    </noscript>
+  </div>
 
-      <div class="row row-total">
-        <span class="row-label">
-          Fees and charges
-          <span class="row-note">
-            <span class="num" id="share-out">{(share * 100).toFixed(1)}%</span> of the price
-          </span>
-        </span>
-        <span class="row-value" id="fees-out">{AED.format(example.fees)}</span>
-      </div>
-
-      <div class="rows" style="margin-top: var(--space-l); border-top:0;">
-        <div class="row">
-          <span class="row-label">Deposit
-            <span class="row-note">Price less the loan</span>
-          </span>
-          <span class="row-value" id="deposit-out">{AED.format(example.deposit)}</span>
-        </div>
-        <div class="row" id="shortfall-row" hidden>
-          <span class="row-label" style="color: var(--caution);">
-            Of which, short valuation
-            <span class="row-note">Already inside the deposit above. The loan follows the lower figure, so the deposit rises to cover it.</span>
-          </span>
-          <span class="row-value" id="shortfall-out" style="color: var(--caution);">{AED.format(0)}</span>
-        </div>
-        <div class="row row-total">
-          <span class="row-label">
-            Cash needed on the day
-            <span class="row-note">Deposit plus fees</span>
-          </span>
-          <span class="row-value" id="cash-out" style="color: var(--signal);">
-            {AED.format(example.cashToClose)}
-          </span>
-        </div>
+  <div class="shell">
+    <section style="margin-top: var(--space-xl);">
+      <h2>Every community with enough sales to report</h2>
+      <p class="meta" style="margin-top: var(--space-2xs); max-width: 62ch;">
+        {ranked.length} of {cs.length}. The rest recorded fewer than 40 sales
+        since 2023, which is too few to publish a median from.
+      </p>
+      <div style="overflow-x:auto; margin-top: var(--space-m);">
+        <table style="width:100%; border-collapse:collapse; font-size: var(--step--1);">
+          <thead>
+            <tr>
+              <th scope="col" style="text-align:left; padding:0.5rem 0.7rem 0.5rem 0; border-bottom:2px solid var(--ink);">Community</th>
+              <th scope="col" style="text-align:right; padding:0.5rem 0.7rem; border-bottom:2px solid var(--ink);">AED/sqft</th>
+              <th scope="col" style="text-align:right; padding:0.5rem 0.7rem; border-bottom:2px solid var(--ink);">Change</th>
+              <th scope="col" style="text-align:right; padding:0.5rem 0.7rem; border-bottom:2px solid var(--ink);">Sales 12m</th>
+              <th scope="col" style="text-align:right; padding:0.5rem 0 0.5rem 0.7rem; border-bottom:2px solid var(--ink);">Off-plan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ranked.map((c) => (
+              <tr>
+                <td style="padding:0.45rem 0.7rem 0.45rem 0; border-bottom:1px solid var(--rule);">
+                  {named(c)}
+                  {c.common && <span class="row-note">{c.name}</span>}
+                </td>
+                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{fmt.format(c.psf as number)}</td>
+                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{c.growth !== null ? `${c.growth > 0 ? "+" : ""}${c.growth}%` : "—"}</td>
+                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{fmt.format(c.sales12)}</td>
+                <td class="num" style="text-align:right; padding:0.45rem 0 0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{c.offplan !== null ? `${c.offplan}%` : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </section>
 
-    <!-- The valuation gap. The point of the site. -->
-    <section aria-labelledby="val-h" style="margin-top: var(--space-xl); padding-top: var(--space-m); border-top: 1px solid var(--rule);">
-      <h2 id="val-h">What if the bank values it lower?</h2>
-      <p style="margin-top: var(--space-s);">
-        A lender advances against the lower of its own valuation and the price you
-        agreed. If the valuation comes in under, the loan shrinks, but the seller
-        is still owed the price you agreed, so the difference lands on your
-        deposit. On an eighty percent loan, every dirham the valuation falls short
-        costs you eighty fils in extra cash, usually at short notice.
-      </p>
-      <div style="margin-top: var(--space-s);">
-        <label class="meta" for="valuation">
-          Bank values it at <span class="num" id="valuation-out">100%</span> of the agreed price
-        </label>
-        <input id="valuation" name="valuation" type="range" min="88" max="105" step="1" value="100" style="width:100%;" />
-      </div>
-      <p class="meta" id="valuation-note" style="margin-top: var(--space-s);">
-        At the agreed price there is no gap. Drag the slider to see what a short
-        valuation costs you.
-      </p>
-      <p class="meta" style="margin-top: var(--space-s);">
-        Most contracts carry a variance clause covering some of this. Read what
-        yours actually says before you sign it.
-      </p>
-    </section>
-
-    <p class="meta" style="margin-top: var(--space-xl);">
-      Every figure and its source is listed on <a href="/costs">the fee reference</a>,
-      and how this is worked out is on <a href="/method">the method page</a>.
-      Fees change. These were checked in {CHECKED}.
+    <p class="meta" style="margin-top: var(--space-xl); max-width: 62ch;">
+      Source: {map.source}. Names are the official cadastral ones, with the
+      familiar name shown first where they differ, because nobody searches for
+      Al Thanyah Fifth. How this is built is on <a href="/method">the method page</a>.
     </p>
   </div>
 
-  <!-- Served as a file, never inline: the CSP carries no unsafe-inline. (§4.1) -->
-  <script src="/calc.js" defer></script>
 </Base>
+
+<link rel="stylesheet" href="/vendor/maplibre-gl.css" />
+<!-- A module file, not an inline script: the CSP carries no unsafe-inline, and
+     the browser resolves MapLibre's worker relative to the vendored module. -->
+<script type="module" src="/map.js"></script>

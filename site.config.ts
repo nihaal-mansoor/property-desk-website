@@ -5,9 +5,9 @@
 export default {
   brand: "Property Desk",
   domain: "propertydeskdubai.com",
-  tagline: "What buying in Dubai actually costs.",
+  tagline: "What Dubai property actually sold for.",
   description:
-    "Every fee on a Dubai property purchase, itemised, with the cash you need on transfer day. Sourced and dated.",
+    "Every Dubai community, coloured by the registered sale record rather than by asking prices. Built from 1.78 million Land Department transactions.",
   /** Contact and analytics are set per site before launch, never committed. */
   contactEmail: "",
   gaMeasurementId: "",
