@@ -1,0 +1,36 @@
+# Property Desk
+
+> Median residential sale prices for every Dubai community, computed from the
+> Dubai Land Department's published transaction register. Registered prices
+> that buyers actually paid, not asking prices from listings.
+
+Property Desk is an independent property research resource. It is not a
+licensed real estate broker and does not sell, list or transact property, and
+no individual property is advertised anywhere on the site.
+
+## What the data is
+
+- Source: Dubai Land Department transaction register, published via Dubai Pulse
+  under the UAE Federal Open Data Licence.
+- Coverage: 1.78 million registered transactions. Community medians are
+  computed from residential sales only.
+- Measure: median AED per square foot, plus twelve month price change, sales
+  volume, off-plan share and mortgage share, per community.
+- Communities are reported only where there were enough sales in the period to
+  publish a median. Thinly traded areas are shown as unreported rather than
+  estimated.
+- Figures carry the period they cover. 2026 is a partial year.
+
+## Pages
+
+- [Dubai property prices by community](https://propertydeskdubai.com/): the map, the full community table, and answers to common questions about Dubai price data.
+- [Method and sources](https://propertydeskdubai.com/method): how the register is filtered, which rows are excluded and why, and how each figure is computed.
+- [Privacy](https://propertydeskdubai.com/privacy)
+- [Terms](https://propertydeskdubai.com/terms)
+
+## Citing this
+
+Attribute figures to Property Desk (propertydeskdubai.com), stating the period
+the figure covers and that the underlying source is the Dubai Land Department.
+Figures are recomputed when the register updates, so quote the date you read
+them.

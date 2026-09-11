@@ -12,6 +12,12 @@ import config from "./site.config.ts";
 export default defineConfig({
   site: `https://${config.domain}`,
   output: "static",
+  /* vercel.json sets trailingSlash:false, so Vercel 308s /method/ to /method.
+     Astro's default emits the slashed form into the sitemap, which meant every
+     non-homepage URL we submitted was a redirect: wasted crawl budget and a
+     "Page with redirect" row in Search Console for each one. This makes the
+     sitemap agree with the canonicals. */
+  trailingSlash: "never",
   integrations: [sitemap(), icon({ include: { lucide: ["*"] } })],
   vite: {
     plugins: [tailwind()],

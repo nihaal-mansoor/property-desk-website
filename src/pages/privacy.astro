@@ -2,7 +2,7 @@
 import Base from "../layouts/Base.astro";
 import config from "../../site.config";
 ---
-<Base title="Privacy" description="What Property Desk records. There is no form, no account and no tracking: the site is static files and a public dataset." path="/privacy">
+<Base title="Privacy" description="What Property Desk records: one enquiry form, cookieless visitor counts, and nothing else. No account, no advertising trackers, no profiling." path="/privacy">
   <div class="col" style="padding-block: var(--space-l) var(--space-xl);">
     <h1>Privacy</h1>
 
@@ -46,6 +46,15 @@ import config from "../../site.config";
       from them directly and they see those requests, as any provider of an
       image on a page would.
     </p>
+    <p>
+      We count visits using Vercel Web Analytics and measure how quickly pages
+      load using Vercel Speed Insights. Both are run by our host, both are
+      cookieless, and neither writes anything to your device or follows you to
+      any other site. They record the page you viewed, roughly where in the
+      world the request came from, and how the page performed. There is no
+      identifier that links one visit of yours to another, and we cannot pick
+      an individual reader out of either.
+    </p>
 
     <h2 style="margin-top: var(--space-l);">The data on the map is not about you</h2>
     <p style="margin-top: var(--space-s);">
@@ -58,9 +67,9 @@ import config from "../../site.config";
     <h2 style="margin-top: var(--space-l);">Your rights</h2>
     <p style="margin-top: var(--space-s);">
       Under the UAE Personal Data Protection Law you may ask what is held about
-      you, and ask for it to be corrected or deleted. Since this site collects
-      nothing from you directly, in practice there is nothing of yours here to
-      return.
+      you, and ask for it to be corrected or deleted. If you have never sent an
+      enquiry, there is nothing of yours here to return: the visitor counts
+      above carry no identifier that could be traced back to you.
     </p>
     <p>
       If what we collect changes, this page changes with it.
