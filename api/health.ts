@@ -11,7 +11,38 @@
  */
 import { neon } from "@neondatabase/serverless";
 
-export default async function handler(request: Request): Promise<Response> {
+/** Minimal shape of Node's ServerResponse that this file touches. */
+interface NodeRes {
+  statusCode: number;
+  setHeader(name: string, value: string): void;
+  end(body?: string): void;
+}
+
+/**
+ * Vercel's Node runtime calls the default export with Node's (req, res), not
+ * with a web Request. Returning a Response there sends nothing and the request
+ * hangs until the platform gives up, which is precisely how this endpoint
+ * failed. Accept either convention rather than assume one.
+ */
+export default async function handler(a: unknown, b?: NodeRes): Promise<Response | void> {
+  const body = await report();
+  const status = body.ok ? 200 : 503;
+  const text = JSON.stringify(body, null, 2);
+
+  if (typeof Request !== "undefined" && a instanceof Request) {
+    return new Response(text, {
+      status,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+    });
+  }
+  const res = b as NodeRes;
+  res.statusCode = status;
+  res.setHeader("content-type", "application/json; charset=utf-8");
+  res.setHeader("cache-control", "no-store");
+  res.end(text);
+}
+
+async function report() {
   const dbUrl = process.env["DATABASE_URL"];
 
   /* Reachability and whether the table the handler writes to exists.
@@ -43,7 +74,7 @@ export default async function handler(request: Request): Promise<Response> {
 
   const email = Boolean(process.env["RESEND_API_KEY"] && process.env["LEAD_FROM_EMAIL"] && process.env["LEAD_TO_EMAIL"]);
 
-  const body = {
+  return {
     ok: database === "ready",
     /* The lead is stored first and emailed second, so storage alone is enough
        to stop losing enquiries. Email is a convenience on top. */
@@ -52,12 +83,4 @@ export default async function handler(request: Request): Promise<Response> {
     turnstile: "disabled",
     checkedAt: new Date().toISOString(),
   };
-
-  return new Response(JSON.stringify(body, null, 2), {
-    status: body.ok ? 200 : 503,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-    },
-  });
 }
