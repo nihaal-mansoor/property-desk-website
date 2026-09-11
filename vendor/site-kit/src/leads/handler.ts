@@ -187,7 +187,12 @@ export async function handleLead(
       message: lead.message ?? null,
       sourceDomain: config.domain,
       sourcePage: lead.sourcePage ?? "/",
-      sourceTopic: config.topic,
+      /* What the reader was actually looking at, which is the whole point of
+         giving each section its own call to action (§6.2a). Writing config.topic
+         here instead threw that away and stamped every enquiry from every page
+         with one site-wide string. Falls back to the site topic when a form has
+         no contextual CTA behind it. */
+      sourceTopic: lead.sourceTopic?.trim() || config.topic,
       consentText: CONSENT_TEXT,
       consentVersion: CONSENT_VERSION,
       ipAddress: ip,

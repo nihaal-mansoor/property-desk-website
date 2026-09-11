@@ -21,10 +21,28 @@ export interface LeadRecord {
   readonly userAgent: string | null;
 }
 
+/**
+ * Connection-string variables the Neon and Vercel Postgres integrations set,
+ * in the order we would rather use them: pooled before direct. DATABASE_URL is
+ * what .env.example documents and what a site should set by hand; the rest are
+ * accepted because connecting a database through the Vercel dashboard names it
+ * for you, and a working integration under another name should not read as no
+ * database at all.
+ */
+const URL_VARS = [
+  "DATABASE_URL",
+  "POSTGRES_URL",
+  "POSTGRES_PRISMA_URL",
+  "DATABASE_URL_UNPOOLED",
+  "POSTGRES_URL_NON_POOLING",
+] as const;
+
 function db() {
-  const url = process.env["DATABASE_URL"];
-  if (!url) throw new Error("DATABASE_URL is not configured.");
-  return neon(url);
+  for (const name of URL_VARS) {
+    const url = process.env[name];
+    if (url) return neon(url);
+  }
+  throw new Error(`No database connection string. Set one of: ${URL_VARS.join(", ")}.`);
 }
 
 /** Idempotent. Run once per environment before the first deploy. */

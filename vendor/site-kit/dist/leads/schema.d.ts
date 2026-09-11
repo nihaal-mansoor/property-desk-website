@@ -10,8 +10,8 @@ export declare const leadSchema: z.ZodObject<{
     consent: z.ZodLiteral<true>;
     /** Which site and tool produced this lead. Set server-side from config. */
     sourceDomain: z.ZodOptional<z.ZodString>;
-    sourcePage: z.ZodOptional<z.ZodString>;
-    sourceTopic: z.ZodOptional<z.ZodString>;
+    sourcePage: z.ZodOptional<z.ZodPipeline<z.ZodEffects<z.ZodString, string, string>, z.ZodString>>;
+    sourceTopic: z.ZodOptional<z.ZodPipeline<z.ZodEffects<z.ZodString, string, string>, z.ZodString>>;
     /** Honeypot — must be empty. Hidden from real users and from assistive tech. */
     company: z.ZodDefault<z.ZodOptional<z.ZodString>>;
     /** Client timestamp at form render, used for the time-trap. */
@@ -55,8 +55,8 @@ export declare const leadFormSchema: z.ZodObject<Pick<{
     consent: z.ZodLiteral<true>;
     /** Which site and tool produced this lead. Set server-side from config. */
     sourceDomain: z.ZodOptional<z.ZodString>;
-    sourcePage: z.ZodOptional<z.ZodString>;
-    sourceTopic: z.ZodOptional<z.ZodString>;
+    sourcePage: z.ZodOptional<z.ZodPipeline<z.ZodEffects<z.ZodString, string, string>, z.ZodString>>;
+    sourceTopic: z.ZodOptional<z.ZodPipeline<z.ZodEffects<z.ZodString, string, string>, z.ZodString>>;
     /** Honeypot — must be empty. Hidden from real users and from assistive tech. */
     company: z.ZodDefault<z.ZodOptional<z.ZodString>>;
     /** Client timestamp at form render, used for the time-trap. */

@@ -42,8 +42,25 @@ export default async function handler(a: unknown, b?: NodeRes): Promise<Response
   res.end(text);
 }
 
+/**
+ * Connection-string variables the Neon and Vercel Postgres integrations are
+ * known to set, in the order we would rather use them: pooled before direct.
+ * A fixed list, never a scan of the environment, so this can only ever name
+ * variables we already expect and can never disclose an unrelated one.
+ */
+const DB_URL_VARS = [
+  "DATABASE_URL",
+  "POSTGRES_URL",
+  "POSTGRES_PRISMA_URL",
+  "DATABASE_URL_UNPOOLED",
+  "POSTGRES_URL_NON_POOLING",
+] as const;
+
 async function report() {
-  const dbUrl = process.env["DATABASE_URL"];
+  /* Names only. A present variable is reported as present; its value is never
+     read into the response, logged, or returned. */
+  const present = DB_URL_VARS.filter((n) => Boolean(process.env[n]));
+  const dbUrl = present.length ? process.env[present[0]] : undefined;
 
   /* Reachability and whether the table the handler writes to exists.
      Bounded, because an unreachable database does not refuse a connection, it
@@ -76,6 +93,10 @@ async function report() {
 
   return {
     ok: database === "ready",
+    /* Which connection-string variable the function actually found, so a
+       working integration that simply used another name is distinguishable
+       from no integration at all. */
+    connectionStringFrom: present.length ? present : "none of " + DB_URL_VARS.join(", "),
     /* The lead is stored first and emailed second, so storage alone is enough
        to stop losing enquiries. Email is a convenience on top. */
     database,

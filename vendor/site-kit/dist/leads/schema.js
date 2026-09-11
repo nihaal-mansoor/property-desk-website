@@ -56,8 +56,11 @@ export const leadSchema = z
     }),
     /** Which site and tool produced this lead. Set server-side from config. */
     sourceDomain: z.string().max(120).optional(),
-    sourcePage: z.string().max(300).optional(),
-    sourceTopic: z.string().max(160).optional(),
+    /* Both are attacker-controlled despite being readonly in the form, and
+       both end up in a notification email, so they carry the same markup
+       rejection as every other free-text field. */
+    sourcePage: noMarkup("Source page").pipe(z.string().trim().max(300)).optional(),
+    sourceTopic: noMarkup("Source topic").pipe(z.string().trim().max(160)).optional(),
     /** Honeypot — must be empty. Hidden from real users and from assistive tech. */
     company: z.string().max(0, "Rejected.").optional().default(""),
     /** Client timestamp at form render, used for the time-trap. */
