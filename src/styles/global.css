@@ -310,6 +310,14 @@
 
   /* A row of figures. Hairline rules, no cards, no borders around anything. */
   .rows { border-top: 1px solid var(--rule); }
+  /* A label/value list stretched across the browsing shell loses the eye
+     between the two: by the time you reach the number you have forgotten
+     whose it is. Two columns once there is room, so each row keeps a
+     readable span. */
+  .rows-2up { display: grid; column-gap: var(--space-2xl); }
+  @media (min-width: 64rem) {
+    .rows-2up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
   .row {
     display: flex;
     align-items: baseline;

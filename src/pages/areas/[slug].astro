@@ -177,20 +177,22 @@ const description = `Median registered sale price in ${name} was AED ${fmt.forma
 ---
 
 <Base title={`${name} price per sqft`} description={description} path={pathOf(c)} schema={schema}>
-  <div class="col" style="padding-block: var(--space-m) 0;">
+  <div class="shell" style="padding-block: var(--space-m) 0;">
     <nav aria-label="Breadcrumb">
       <p class="meta">
         <a href="/">Dubai property prices</a> &rsaquo; {name}
       </p>
     </nav>
 
-    <h1 style="margin-top: var(--space-s);">{name} price per square foot</h1>
+    <div class="hero" style="margin-top: var(--space-s);">
+      <div>
+    <h1>{name} price per square foot</h1>
     {official && <p class="meta" style="margin-top: var(--space-2xs);">Registered by the Land Department as {official}</p>}
 
     <!-- The opening paragraph is the answer, not an introduction to one. It is
          the passage a search result or an assistant will quote, so it carries
          the figure, the window and the sample size in its first sentence. -->
-    <p class="lede" style="margin-top: var(--space-m);">
+    <p class="lede" style="margin-top: var(--space-m); max-width: 60ch;">
       The median registered sale in {name} was <strong>AED {fmt.format(psf)} per square foot</strong>{" "}
       over {PERIOD_PHRASE[P]} to {asOfLong}, across {fmt.format(now.sales)} registered sales.
       That is {vsCityPhrase}. These are prices registered with the Land Department
@@ -202,9 +204,8 @@ const description = `Median registered sale price in ${name} was AED ${fmt.forma
         median from, so this page reports {PERIOD_PHRASE[P]} instead.
       </p>
     )}
-  </div>
+      </div>
 
-  <div class="col" style="padding-block: var(--space-l) 0;">
     <dl class="hero-figs">
       {/* Always four, so the 2-up grid fills and nothing sits alone in a row.
           A community with no comparable period has no growth figure, so the
@@ -224,11 +225,12 @@ const description = `Median registered sale price in ${name} was AED ${fmt.forma
         </div>
       ))}
     </dl>
+    </div>
   </div>
 
-  <div class="col" style="padding-block: var(--space-l) 0;">
+  <div class="shell" style="padding-block: var(--space-l) 0;">
     <h2>How {name} compares</h2>
-    <p style="margin-top: var(--space-s); max-width: 68ch;">
+    <p style="margin-top: var(--space-s); max-width: 72ch;">
       Of the {peers.length} communities with enough registered sales to publish a
       median over {PERIOD_SHORT[P]}, {name} ranks {rank}. The market here is{" "}
       {offplanPhrase}.
@@ -249,7 +251,7 @@ const description = `Median registered sale price in ${name} was AED ${fmt.forma
   </div>
 
   {timeline.length > 1 && (
-    <div class="col" style="padding-block: var(--space-l) 0;">
+    <div class="shell" style="padding-block: var(--space-l) 0;">
       <h2>{name} over time</h2>
       <p class="meta" style="margin-top: var(--space-2xs); max-width: 68ch;">
         Each row is a separate window ending {asOfLong}, not a year-by-year
@@ -283,13 +285,13 @@ const description = `Median registered sale price in ${name} was AED ${fmt.forma
   )}
 
   {projects.length > 0 && (
-    <div class="col" style="padding-block: var(--space-l) 0;">
+    <div class="shell" style="padding-block: var(--space-l) 0;">
       <h2>Projects trading in {name}</h2>
       <p class="meta" style="margin-top: var(--space-2xs); max-width: 68ch;">
         The developments with the most registered sales here over {PERIOD_SHORT[P]}.
         Counts of completed transactions, not availability.
       </p>
-      <dl class="rows" style="margin-top: var(--space-m);">
+      <dl class="rows rows-2up" style="margin-top: var(--space-m);">
         {projects.map((pr) => (
           <div class="row">
             <dt class="row-label">{pr.name}</dt>
@@ -300,7 +302,7 @@ const description = `Median registered sale price in ${name} was AED ${fmt.forma
     </div>
   )}
 
-  <div class="col" style="padding-block: var(--space-l) 0;">
+  <div class="shell" style="padding-block: var(--space-l) 0;">
     <section class="qa">
       <h2>Questions about {name}</h2>
       <div class="qa-grid">
@@ -315,12 +317,12 @@ const description = `Median registered sale price in ${name} was AED ${fmt.forma
   </div>
 
   {near.length > 0 && (
-    <div class="col" style="padding-block: var(--space-l) 0;">
+    <div class="shell" style="padding-block: var(--space-l) 0;">
       <h2>Communities at a similar price</h2>
       <p class="meta" style="margin-top: var(--space-2xs); max-width: 68ch;">
         Nearest to {name} on median price per square foot over {PERIOD_SHORT[P]}.
       </p>
-      <dl class="rows" style="margin-top: var(--space-m);">
+      <dl class="rows rows-2up" style="margin-top: var(--space-m);">
         {near.map((o) => (
           <div class="row">
             <dt class="row-label"><a href={pathOf(o)}>{named(o)}</a></dt>
@@ -334,7 +336,7 @@ const description = `Median registered sale price in ${name} was AED ${fmt.forma
     </div>
   )}
 
-  <div class="col" style="padding-block: var(--space-l) 0;">
+  <div class="shell" style="padding-block: var(--space-l) 0;">
     <div class="cta-row">
       <button type="button" class="btn cta" data-enquire={`Area: ${name}`}>
         Ask what this means for a purchase in {name}
@@ -342,14 +344,20 @@ const description = `Median registered sale price in ${name} was AED ${fmt.forma
     </div>
   </div>
 
-  <EnquiryForm />
+  <div class="shell">
+    <EnquiryForm />
+  </div>
 
-  <p class="meta col" style="margin-top: var(--space-xl); padding-block-end: var(--space-2xl);">
+  <!-- Capping the shell itself would centre this note against left-aligned
+       content above it. Cap the paragraph, keep the shell full width. -->
+  <div class="shell" style="margin-top: var(--space-xl); padding-block-end: var(--space-2xl);">
+  <p class="meta" style="max-width: 80ch;">
     Computed from the {meta.source}. Most recent sale included {asOfLong}. Shops,
     offices and land plots are excluded, and a community needs at least 20 priced
     sales within a window before a median is published for it. Method and full
     workings on the <a href="/method">method page</a>.
   </p>
+  </div>
 </Base>
 
 <!-- The enquiry form's validation and the contextual CTA buttons. No map on
