@@ -3,6 +3,7 @@ import Base from "../layouts/Base.astro";
 import config from "../../site.config";
 import EnquiryForm from "../components/EnquiryForm.astro";
 import map from "../data/map.json";
+import { hasPage, pathOf } from "../lib/communities";
 
 /*
  * The map is projected and coloured at build time, so the page is a complete,
@@ -389,7 +390,7 @@ const schema = [
             {ranked.map((c) => (
               <tr>
                 <td style="padding:0.45rem 0.7rem 0.45rem 0; border-bottom:1px solid var(--rule);">
-                  {named(c)}
+                  {hasPage(c) ? <a href={pathOf(c)}>{named(c)}</a> : named(c)}
                   {c.common && <span class="row-note">{c.name}</span>}
                 </td>
                 <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{fmt.format(at(c).psf)}</td>

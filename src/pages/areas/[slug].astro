@@ -1,0 +1,358 @@
+---
+/*
+ * One page per community, for the question people actually type: what does a
+ * square foot cost in this specific place.
+ *
+ * Every sentence on this page is computed from the register. None of it is
+ * typed. A hand-written "Dubai Marina is one of the busiest markets" becomes
+ * false the first time the data refreshes and nothing fails, because prose
+ * does not fail a build. The FAQ text and the FAQPage JSON-LD are rendered
+ * from one array for the same reason: schema that disagrees with the visible
+ * text is a structured-data penalty, not a ranking boost.
+ */
+import Base from "../../layouts/Base.astro";
+import EnquiryForm from "../../components/EnquiryForm.astro";
+import config from "../../../site.config";
+import {
+  PERIODS,
+  PERIOD_PHRASE,
+  PERIOD_SHORT,
+  asOfLong,
+  cityFigures,
+  comparables,
+  figuresOf,
+  fmt,
+  freshestPeriod,
+  meta,
+  named,
+  pageCommunities,
+  pathOf,
+  roomsPhrase,
+  signed,
+  slugOf,
+  type Community,
+  type Period,
+} from "../../lib/communities";
+
+export function getStaticPaths() {
+  return pageCommunities.map((c) => ({
+    params: { slug: slugOf(c) },
+    props: { community: c },
+  }));
+}
+
+interface Props {
+  community: Community;
+}
+const { community: c } = Astro.props;
+
+const name = named(c);
+const official = c.common ? c.name.trim() : null;
+const P = freshestPeriod(c);
+const now = figuresOf(c, P)!;
+const city = cityFigures(P);
+const current = P === "12m";
+
+/* Every window this community can actually be reported on, so a quiet market
+   shows its history rather than four empty rows. */
+const timeline = PERIODS.map((p) => ({ p, f: figuresOf(c, p) })).filter(
+  (r) => r.f?.psf != null,
+);
+
+/* Ranked against the communities reportable on the same window. Comparing a
+   twelve-month median against a ten-year one would be meaningless. */
+const peers = pageCommunities.filter((o) => figuresOf(o, P)?.psf != null);
+const ordered = [...peers].sort(
+  (a, b) => (figuresOf(b, P)!.psf as number) - (figuresOf(a, P)!.psf as number),
+);
+const rank = ordered.findIndex((o) => o.id === c.id) + 1;
+
+const psf = now.psf as number;
+const vsCity = Math.round(((psf - (city.psf as number)) / (city.psf as number)) * 100);
+const vsCityPhrase =
+  vsCity === 0
+    ? "the same as the city-wide median"
+    : `${Math.abs(vsCity)} per cent ${vsCity > 0 ? "above" : "below"} the city-wide median`;
+
+const typical = now.typical ?? null;
+const tWord = typical ? roomsPhrase(typical.rooms) : null;
+const tNoun = tWord && /bedroom|studio/.test(tWord) ? "home" : "property";
+
+const projects = (now.projects ?? []).slice(0, 6);
+const near = comparables(c, P, 6);
+
+/* The register's own words for what this community is: the two measures that
+   most change how a figure should be read. */
+const offplanPhrase =
+  now.offplan >= 80
+    ? "almost entirely off-plan, bought from developers before completion"
+    : now.offplan <= 15
+      ? "almost entirely resale, bought from existing owners"
+      : `${now.offplan} per cent off-plan and ${100 - now.offplan} per cent resale`;
+
+const growthPhrase =
+  now.growth === null
+    ? null
+    : now.growth > 0
+      ? `rose ${now.growth} per cent`
+      : now.growth < 0
+        ? `fell ${Math.abs(now.growth)} per cent`
+        : "did not move";
+
+/* ------------------------------------------------------------------ *
+ * Questions, generated from the same figures the page shows.
+ * ------------------------------------------------------------------ */
+const faqs: { q: string; a: string }[] = [
+  {
+    q: `What is the price per square foot in ${name}?`,
+    a: `The median registered sale in ${name} was AED ${fmt.format(psf)} per square foot over ${PERIOD_PHRASE[P]} to ${asOfLong}, across ${fmt.format(now.sales)} registered sales. That is ${vsCityPhrase} of AED ${fmt.format(city.psf as number)}, and ranks ${rank} of ${peers.length} reportable communities. This is the price registered with the Land Department once a sale completed, not an asking price.`,
+  },
+  ...(growthPhrase
+    ? [
+        {
+          q: `Are property prices in ${name} rising or falling?`,
+          a: `The median price per square foot in ${name} ${growthPhrase} over ${PERIOD_PHRASE[P]}, measured against the equal period immediately before it. The city-wide median ${(city.growth ?? 0) > 0 ? "rose" : "fell"} ${Math.abs(city.growth ?? 0)} per cent over the same window. A large swing in a community where most sales are new launches usually reflects a change in what is being sold there rather than a repricing of the same homes.`,
+        },
+      ]
+    : []),
+  ...(typical
+    ? [
+        {
+          q: `How much does a ${tWord} ${tNoun} cost in ${name}?`,
+          a: `The commonest size registered in ${name} over ${PERIOD_PHRASE[P]} was a ${tWord}, and its median was AED ${fmt.format(typical.price)} across ${fmt.format(typical.n)} such sales, at a typical ${fmt.format(typical.sqft)} square feet. Median rather than average, because a small number of very large sales pulls an average upward.`,
+        },
+      ]
+    : []),
+  {
+    q: `How much of the ${name} market is off-plan?`,
+    a: `Over ${PERIOD_PHRASE[P]}, ${now.offplan} per cent of registered sales in ${name} were off-plan, meaning bought from a developer before completion rather than from an existing owner. Across Dubai the share was ${city.offplan} per cent. Mortgage registrations equalled ${now.financed} per cent of sales here, against ${city.financed} per cent city-wide; a developer payment plan is not a mortgage and never reaches the mortgage register.`,
+  },
+];
+
+const pageUrl = `https://${config.domain}${pathOf(c)}`;
+
+const schema = [
+  {
+    "@type": "Dataset",
+    name: `${name} residential sale prices`,
+    description: `Median registered price per square foot, price growth, sales volume, off-plan share and mortgage share for ${name}, Dubai, computed from the Dubai Land Department transaction register.`,
+    url: pageUrl,
+    license: "https://www.dubaipulse.gov.ae/",
+    isAccessibleForFree: true,
+    creator: { "@id": `https://${config.domain}/#org` },
+    isPartOf: { "@id": `https://${config.domain}/#dataset` },
+    temporalCoverage: `2015/${meta.latest}`,
+    spatialCoverage: {
+      "@type": "Place",
+      name: `${name}, Dubai, United Arab Emirates`,
+      containedInPlace: { "@type": "Place", name: "Dubai, United Arab Emirates" },
+    },
+    variableMeasured: [
+      "Median price per square foot (AED)",
+      "Price growth against the preceding equal period",
+      "Registered sales volume",
+      "Off-plan share of sales",
+      "Mortgage registrations as a share of sales",
+    ],
+  },
+  {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Dubai property prices", item: `https://${config.domain}/` },
+      { "@type": "ListItem", position: 2, name: `${name} price per square foot` },
+    ],
+  },
+  {
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  },
+];
+
+/* Under 155 characters for every community, including the longest name. */
+const description = `Median registered sale price in ${name} was AED ${fmt.format(psf)} per square foot over ${PERIOD_SHORT[P]}, from ${fmt.format(now.sales)} Land Department sales.`;
+---
+
+<Base title={`${name} price per sqft`} description={description} path={pathOf(c)} schema={schema}>
+  <div class="col" style="padding-block: var(--space-m) 0;">
+    <nav aria-label="Breadcrumb">
+      <p class="meta">
+        <a href="/">Dubai property prices</a> &rsaquo; {name}
+      </p>
+    </nav>
+
+    <h1 style="margin-top: var(--space-s);">{name} price per square foot</h1>
+    {official && <p class="meta" style="margin-top: var(--space-2xs);">Registered by the Land Department as {official}</p>}
+
+    <!-- The opening paragraph is the answer, not an introduction to one. It is
+         the passage a search result or an assistant will quote, so it carries
+         the figure, the window and the sample size in its first sentence. -->
+    <p class="lede" style="margin-top: var(--space-m);">
+      The median registered sale in {name} was <strong>AED {fmt.format(psf)} per square foot</strong>{" "}
+      over {PERIOD_PHRASE[P]} to {asOfLong}, across {fmt.format(now.sales)} registered sales.
+      That is {vsCityPhrase}. These are prices registered with the Land Department
+      after completion, not asking prices.
+    </p>
+    {!current && (
+      <p class="meta" style="margin-top: var(--space-s); max-width: 68ch;">
+        {name} did not record enough sales in the last twelve months to publish a
+        median from, so this page reports {PERIOD_PHRASE[P]} instead.
+      </p>
+    )}
+  </div>
+
+  <div class="col" style="padding-block: var(--space-l) 0;">
+    <dl class="hero-figs">
+      {/* Always four, so the 2-up grid fills and nothing sits alone in a row.
+          A community with no comparable period has no growth figure, so the
+          mortgage share takes that slot; it is in the questions below either
+          way. */}
+      {[
+        { n: fmt.format(psf), l: `Median AED per square foot, ${PERIOD_SHORT[P]}` },
+        now.growth !== null
+          ? { n: `${signed(now.growth)}%`, l: "Change on the equal period before" }
+          : { n: `${now.financed}%`, l: "Mortgages per 100 sales" },
+        { n: fmt.format(now.sales), l: "Registered sales" },
+        { n: `${now.offplan}%`, l: "Bought off-plan from a developer" },
+      ].map((f) => (
+        <div class="fig">
+          <dt class="fig-n">{f.n}</dt>
+          <dd class="fig-l">{f.l}</dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+
+  <div class="col" style="padding-block: var(--space-l) 0;">
+    <h2>How {name} compares</h2>
+    <p style="margin-top: var(--space-s); max-width: 68ch;">
+      Of the {peers.length} communities with enough registered sales to publish a
+      median over {PERIOD_SHORT[P]}, {name} ranks {rank}. The market here is{" "}
+      {offplanPhrase}.
+      {typical && (
+        <>
+          {" "}The commonest size registered was a {tWord}, median AED{" "}
+          {fmt.format(typical.price)} across {fmt.format(typical.n)} such sales, at
+          a typical {fmt.format(typical.sqft)} square feet.
+        </>
+      )}
+    </p>
+
+    <div class="cta-row">
+      <button type="button" class="btn cta" data-enquire={`Area: ${name}`}>
+        Ask about buying in {name}
+      </button>
+    </div>
+  </div>
+
+  {timeline.length > 1 && (
+    <div class="col" style="padding-block: var(--space-l) 0;">
+      <h2>{name} over time</h2>
+      <p class="meta" style="margin-top: var(--space-2xs); max-width: 68ch;">
+        Each row is a separate window ending {asOfLong}, not a year-by-year
+        series. Longer windows carry more sales and move less.
+      </p>
+      <div style="overflow-x:auto; margin-top: var(--space-m);">
+        <table style="width:100%; border-collapse:collapse; font-size: var(--step--1);">
+          <thead>
+            <tr>
+              <th scope="col" style="text-align:left; padding:0.5rem 0.7rem 0.5rem 0; border-bottom:2px solid var(--ink);">Window</th>
+              <th scope="col" style="text-align:right; padding:0.5rem 0.7rem; border-bottom:2px solid var(--ink);">AED/sqft</th>
+              <th scope="col" style="text-align:right; padding:0.5rem 0.7rem; border-bottom:2px solid var(--ink);">Change</th>
+              <th scope="col" style="text-align:right; padding:0.5rem 0.7rem; border-bottom:2px solid var(--ink);">Sales</th>
+              <th scope="col" style="text-align:right; padding:0.5rem 0 0.5rem 0.7rem; border-bottom:2px solid var(--ink);">Off-plan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {timeline.map(({ p, f }) => (
+              <tr>
+                <th scope="row" style="text-align:left; font-weight:400; padding:0.45rem 0.7rem 0.45rem 0; border-bottom:1px solid var(--rule);">{PERIOD_SHORT[p as Period]}</th>
+                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{fmt.format(f!.psf as number)}</td>
+                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{f!.growth !== null ? `${signed(f!.growth)}%` : "n/a"}</td>
+                <td class="num" style="text-align:right; padding:0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{fmt.format(f!.sales)}</td>
+                <td class="num" style="text-align:right; padding:0.45rem 0 0.45rem 0.7rem; border-bottom:1px solid var(--rule);">{f!.offplan}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )}
+
+  {projects.length > 0 && (
+    <div class="col" style="padding-block: var(--space-l) 0;">
+      <h2>Projects trading in {name}</h2>
+      <p class="meta" style="margin-top: var(--space-2xs); max-width: 68ch;">
+        The developments with the most registered sales here over {PERIOD_SHORT[P]}.
+        Counts of completed transactions, not availability.
+      </p>
+      <dl class="rows" style="margin-top: var(--space-m);">
+        {projects.map((pr) => (
+          <div class="row">
+            <dt class="row-label">{pr.name}</dt>
+            <dd class="row-value num">{fmt.format(pr.n)} sales</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )}
+
+  <div class="col" style="padding-block: var(--space-l) 0;">
+    <section class="qa">
+      <h2>Questions about {name}</h2>
+      <div class="qa-grid">
+        {faqs.map((f) => (
+          <div class="qa-item">
+            <h3>{f.q}</h3>
+            <p>{f.a}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  </div>
+
+  {near.length > 0 && (
+    <div class="col" style="padding-block: var(--space-l) 0;">
+      <h2>Communities at a similar price</h2>
+      <p class="meta" style="margin-top: var(--space-2xs); max-width: 68ch;">
+        Nearest to {name} on median price per square foot over {PERIOD_SHORT[P]}.
+      </p>
+      <dl class="rows" style="margin-top: var(--space-m);">
+        {near.map((o) => (
+          <div class="row">
+            <dt class="row-label"><a href={pathOf(o)}>{named(o)}</a></dt>
+            <dd class="row-value num">AED {fmt.format(figuresOf(o, P)!.psf as number)} per sq ft</dd>
+          </div>
+        ))}
+      </dl>
+      <p class="meta" style="margin-top: var(--space-m);">
+        <a href="/">All {pageCommunities.length} communities</a>
+      </p>
+    </div>
+  )}
+
+  <div class="col" style="padding-block: var(--space-l) 0;">
+    <div class="cta-row">
+      <button type="button" class="btn cta" data-enquire={`Area: ${name}`}>
+        Ask what this means for a purchase in {name}
+      </button>
+    </div>
+  </div>
+
+  <EnquiryForm />
+
+  <p class="meta col" style="margin-top: var(--space-xl); padding-block-end: var(--space-2xl);">
+    Computed from the {meta.source}. Most recent sale included {asOfLong}. Shops,
+    offices and land plots are excluded, and a community needs at least 20 priced
+    sales within a window before a median is published for it. Method and full
+    workings on the <a href="/method">method page</a>.
+  </p>
+</Base>
+
+<!-- The enquiry form's validation and the contextual CTA buttons. No map on
+     this page, so map.js is deliberately not loaded: form.js guards its only
+     reference to the map panel. -->
+<script type="module" src="/form.js"></script>
