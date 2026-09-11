@@ -14,15 +14,28 @@ import { neon } from "@neondatabase/serverless";
 export default async function handler(request: Request): Promise<Response> {
   const dbUrl = process.env["DATABASE_URL"];
 
-  /** Reachability and whether the table the handler writes to exists. */
-  let database: "not_configured" | "unreachable" | "no_table" | "ready" = "not_configured";
+  /* Reachability and whether the table the handler writes to exists.
+     Bounded, because an unreachable database does not refuse a connection, it
+     leaves you waiting: the first version of this check had no timeout and hung
+     until the platform killed it, answering nothing at all. A health check that
+     can hang is worse than none, because it reports the same silence whether
+     the fault is the database or the function. */
+  let database: "not_configured" | "timeout" | "unreachable" | "no_table" | "ready" =
+    "not_configured";
   if (dbUrl) {
-    try {
+    const TIMEOUT_MS = 5000;
+    const probe = (async () => {
       const sql = neon(dbUrl);
       const rows = (await sql`SELECT to_regclass('public.leads') IS NOT NULL AS present`) as {
         present: boolean;
       }[];
-      database = rows[0]?.present ? "ready" : "no_table";
+      return rows[0]?.present ? ("ready" as const) : ("no_table" as const);
+    })();
+    const timeout = new Promise<"timeout">((resolve) =>
+      setTimeout(() => resolve("timeout"), TIMEOUT_MS),
+    );
+    try {
+      database = await Promise.race([probe, timeout]);
     } catch {
       database = "unreachable";
     }
