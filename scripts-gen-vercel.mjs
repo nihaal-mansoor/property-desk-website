@@ -6,10 +6,10 @@ const config = {
   $schema: "https://openapi.vercel.sh/vercel.json",
   ...vercelHeadersConfig({
     analytics: true,
-    // The enquiry form's bot defence. Turnstile renders in an iframe, so this
-    // also flips frame-src from 'none' to the Cloudflare origin; without it the
-    // widget is blocked and never appears, and the form can never be submitted.
-    turnstile: true,
+    // No Turnstile on this site. Leaving it true would allowlist
+    // challenges.cloudflare.com in script-src and open frame-src from 'none'
+    // to the Cloudflare origin, for a widget that is no longer on any page.
+    turnstile: false,
     clarity: false,
     useNonce: false,
     // The map's tiles and style JSON. Named explicitly rather than a wildcard,

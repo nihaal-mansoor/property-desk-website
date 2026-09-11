@@ -11,8 +11,9 @@
     "gate:compliance": "node ./vendor/site-kit/src/testing/gate.ts ./dist propertydeskdubai.com",
     "gate": "npm run build && npm run gate:a11y && npm run gate:compliance",
     "data": "node scripts/build-map-data.mjs && node scripts/vendor-maplibre.mjs",
-    "prebuild": "node scripts/vendor-maplibre.mjs",
-    "gate:axe": "node scripts/gate-axe.mjs"
+    "prebuild": "node scripts/check-api-config.mjs && node scripts/vendor-maplibre.mjs",
+    "gate:axe": "node scripts/gate-axe.mjs",
+    "migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

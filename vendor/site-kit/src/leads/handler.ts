@@ -57,9 +57,22 @@ function originAllowed(request: Request, config: SiteConfig): boolean {
   }
 }
 
+/** Per-site bot-defence choices. Omitted means every layer is on. */
+export interface LeadOptions {
+  /**
+   * Set false to run without Cloudflare Turnstile. The honeypot, the
+   * minimum-time-to-submit trap and the per-IP and per-email rate limits all
+   * still apply; only the interactive challenge is dropped. Say it explicitly
+   * so the decision is visible in the site's own code rather than inferred
+   * from a missing environment variable.
+   */
+  readonly turnstile?: boolean;
+}
+
 export async function handleLead(
   request: Request,
   config: SiteConfig,
+  options?: LeadOptions,
 ): Promise<HandlerResult> {
   if (request.method !== "POST") {
     return {
@@ -117,20 +130,46 @@ export async function handleLead(
 
   const ip = clientIp(request);
 
-  const turnstile = await verifyTurnstile(
-    lead.turnstileToken,
-    ip ?? undefined,
-    process.env["TURNSTILE_SECRET_KEY"],
-  );
-  if (!turnstile.ok) {
-    console.warn(`[lead] turnstile rejected: ${turnstile.reason}`);
-    return {
-      status: 400,
-      body: { ok: false, message: "Verification failed. Please reload and try again." },
-    };
+  /* Turnstile is on unless a site opts out in so many words. The check fails
+     closed, so a site that has not set a secret rejects every submission: that
+     is the right default, and the wrong one to arrive at by forgetting. A site
+     that opts out keeps the honeypot, the time trap and the rate limits, which
+     are the layers that cost the reader nothing. (§4.4) */
+  if (options?.turnstile !== false) {
+    const turnstile = await verifyTurnstile(
+      lead.turnstileToken,
+      ip ?? undefined,
+      process.env["TURNSTILE_SECRET_KEY"],
+    );
+    if (!turnstile.ok) {
+      console.warn(`[lead] turnstile rejected: ${turnstile.reason}`);
+      return {
+        status: 400,
+        body: { ok: false, message: "Verification failed. Please reload and try again." },
+      };
+    }
   }
 
-  const limit = await checkRateLimits(ip, lead.email);
+  /* The rate limiter reads the same database the lead is about to be written
+     to, so it is the first thing to fail when that database is missing or
+     unreachable, and it threw straight out of the handler. On Vercel an
+     escaped throw is FUNCTION_INVOCATION_FAILED: a 500 with no body, which
+     reads from outside as an ordinary server error and hides the real cause.
+     Fail closed and say so in the log, because a lead that cannot be stored
+     is a lead lost, and answering "thanks" to one would be worse. */
+  let limit: Awaited<ReturnType<typeof checkRateLimits>>;
+  try {
+    limit = await checkRateLimits(ip, lead.email);
+  } catch (err) {
+    console.error(
+      `[lead] rate-limit store unavailable: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return {
+      status: 503,
+      body: { ok: false, message: "We cannot take enquiries right now. Please try again shortly." },
+      headers: { "retry-after": "120" },
+    };
+  }
   if (!limit.allowed) {
     return {
       status: 429,

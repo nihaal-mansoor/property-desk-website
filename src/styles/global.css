@@ -223,7 +223,6 @@
   .form-foot { display: flex; align-items: center; gap: var(--space-m); flex-wrap: wrap; }
   .form-status { margin: 0; }
   .form-status.ok { color: var(--ink); font-weight: 500; }
-  .cf-turnstile { min-height: 65px; }
 
   /* Contextual entry points. Same colour as every other CTA on the site. */
   .cta-row { margin-top: var(--space-m); display: flex; gap: var(--space-s); flex-wrap: wrap; align-items: baseline; }

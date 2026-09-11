@@ -12,7 +12,6 @@ import config from "../../site.config";
  * so it is hidden from sight AND from assistive technology, and carries
  * autocomplete="off" and tabindex="-1" so a password manager never fills it.
  */
-const siteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 ---
 
 <section id="enquire" class="enquire">
@@ -80,8 +79,6 @@ const siteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
       </div>
       <p class="field-err" id="e-consent" hidden></p>
 
-      {siteKey && <div class="cf-turnstile" data-sitekey={siteKey} data-theme="auto"></div>}
-
       <div class="form-foot">
         <button type="submit" class="btn cta" id="lead-submit">Send enquiry</button>
         <p class="form-status meta" id="lead-status" role="status" aria-live="polite"></p>
@@ -90,8 +87,8 @@ const siteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
     <noscript>
       <p class="meta" style="margin-top: var(--space-s);">
-        This form needs JavaScript, because it is checked for automated
-        submissions before it is accepted.
+        Sending this form needs JavaScript. With it switched off, email us
+        instead and we will pick it up the same way.
       </p>
     </noscript>
   </div>

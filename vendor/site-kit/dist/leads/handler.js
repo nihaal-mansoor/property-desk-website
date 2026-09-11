@@ -26,7 +26,7 @@ function originAllowed(request, config) {
         return false;
     }
 }
-export async function handleLead(request, config) {
+export async function handleLead(request, config, options) {
     if (request.method !== "POST") {
         return {
             status: 405,
@@ -78,15 +78,40 @@ export async function handleLead(request, config) {
         return { status: 200, body: { ok: true, message: "Thanks — we'll be in touch." } };
     }
     const ip = clientIp(request);
-    const turnstile = await verifyTurnstile(lead.turnstileToken, ip ?? undefined, process.env["TURNSTILE_SECRET_KEY"]);
-    if (!turnstile.ok) {
-        console.warn(`[lead] turnstile rejected: ${turnstile.reason}`);
+    /* Turnstile is on unless a site opts out in so many words. The check fails
+       closed, so a site that has not set a secret rejects every submission: that
+       is the right default, and the wrong one to arrive at by forgetting. A site
+       that opts out keeps the honeypot, the time trap and the rate limits, which
+       are the layers that cost the reader nothing. (§4.4) */
+    if (options?.turnstile !== false) {
+        const turnstile = await verifyTurnstile(lead.turnstileToken, ip ?? undefined, process.env["TURNSTILE_SECRET_KEY"]);
+        if (!turnstile.ok) {
+            console.warn(`[lead] turnstile rejected: ${turnstile.reason}`);
+            return {
+                status: 400,
+                body: { ok: false, message: "Verification failed. Please reload and try again." },
+            };
+        }
+    }
+    /* The rate limiter reads the same database the lead is about to be written
+       to, so it is the first thing to fail when that database is missing or
+       unreachable, and it threw straight out of the handler. On Vercel an
+       escaped throw is FUNCTION_INVOCATION_FAILED: a 500 with no body, which
+       reads from outside as an ordinary server error and hides the real cause.
+       Fail closed and say so in the log, because a lead that cannot be stored
+       is a lead lost, and answering "thanks" to one would be worse. */
+    let limit;
+    try {
+        limit = await checkRateLimits(ip, lead.email);
+    }
+    catch (err) {
+        console.error(`[lead] rate-limit store unavailable: ${err instanceof Error ? err.message : String(err)}`);
         return {
-            status: 400,
-            body: { ok: false, message: "Verification failed. Please reload and try again." },
+            status: 503,
+            body: { ok: false, message: "We cannot take enquiries right now. Please try again shortly." },
+            headers: { "retry-after": "120" },
         };
     }
-    const limit = await checkRateLimits(ip, lead.email);
     if (!limit.allowed) {
         return {
             status: 429,
